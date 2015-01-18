@@ -1,0 +1,6 @@
+Future plans:
+- more testing!
+- stability improvements
+- replace tKinter with something that is thread safe
+- adapt GUI elements size to screen resolution
+- manual fireball analysis tool
