@@ -508,10 +508,10 @@ class ConfirmationVideo(Frame):
 
 
 class SuperBind():
-    """ Enable any key to have proprer events on being pressed once or being held down longer.
+    """ Enable any key to have proper events on being pressed once or being held down longer.
 
         pressed_function is called when the key is being held down.
-        release_function is caled when the key is pressed only once or released after pressing it constantly
+        release_function is called when the key is pressed only once or released after pressing it constantly
 
         Arguments:
             key - key to be pressed, e.g. 'a'
@@ -532,12 +532,12 @@ class SuperBind():
         self.pressed_function = pressed_function
         self.release_function = release_function
 
-        self.root.bind('<KeyPress-'+key+'>', self.key_press)
-        self.root.bind('<KeyRelease-'+key+'>', self.key_release)
+        self.root.bind('<KeyPress-'+key+'>', self.keyPress)
+        self.root.bind('<KeyRelease-'+key+'>', self.keyRelease)
 
         self.pressed_counter = 0
 
-    def key_press(self, event):
+    def keyPress(self, event):
         if self.afterId != None:
             self.master.after_cancel( self.afterId )
             self.afterId = None
@@ -551,10 +551,10 @@ class SuperBind():
             self.pressed_counter += 1
 
 
-    def key_release(self, event):
-        self.afterId = self.master.after_idle( self.process_release, event )
+    def keyRelease(self, event):
+        self.afterId = self.master.after_idle( self.processRelease, event )
 
-    def process_release(self, event):
+    def processRelease(self, event):
         self.release_function()
         self.afterId = None
         self.pressed_counter = 0
