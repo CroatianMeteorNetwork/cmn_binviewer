@@ -1,0 +1,64 @@
+v1.0 -Sept., 2014
+  - initial release
+.
+.
+.
+v1.21 - undocumented changes
+
+v1.3 - Dec. 29, 2014
+  - changed tkinter directory dialog to wxpython directory dialog (tkinter dialog was slow when subdirectory has a lot of files)
+ 
+v1.4 - Dec. 30, 2014
+  - added vieweing individual frames
+  - added GUI modification in vertical layout
+  
+v1.5 - Dec. 31, 2014
+  - added saving BMP images of individual frames in a given range (by individual fields)
+  
+v2.0 - Jan. 1, 2015
+  - added confirmation
+  
+v2.1 - Jan. 4, 2015
+  - added detection marking with green dots
+  
+v2.11 - Jan. 4, 2015
+  - bugfix: files are now sorted in confirmation mode
+  - added exception logging
+  
+v2.12 - Jan. 5, 2015
+  - video optimizations, brightening video if it is too dark
+  - minor bugfixes
+  
+v2.13 - Jan. 5, 2015
+  - added detection-centered video preview during confirmation
+  
+v2.14 - Jan. 6, 2015
+  - fitted confirmation video in layout
+ 
+v2.15 - Jan. 6, 2015
+  - video and confirmation video stability fixes
+  
+v2.20 - Jan. 10, 2015
+  - reworked confirmation video to be shown in a separate window which produces no crashes
+  - conformed code to a coding standard: https://confluence.lsstcorp.org/display/LDMDG/Python+Coding+Standard
+  
+v2.30 - Jan. 10, 2015
+  - added showing of external video during confirmation
+ 
+v2.31 - Jan. 11, 2015
+  - moved logfiles to AppData directory due to permission issues on non-administrator accounts
+  
+v2.32 - Jan. 17, 2015
+  - fixed crash when copying other .txt files to ConfirmedFolder
+  
+v2.33 - Jan. 18, 2015
+  - fixed when switching from video to other filters during confirmation it switched to maxpixel
+  - fixed making gif
+  - fixed individual frame building
+  - fixed data type change during confirmation
+  - fixed timestamp setting from video
+  - fixed bug when last line in FTPdetectinfo is the separator "-------"
+  
+v2.34 - Jan. 26, 2015
+  - confirmed FTPdetectinfo entries are now sorted
+  - fast image change when key is pressed down

@@ -73,7 +73,8 @@ class Confirmation:
 
         image_list = []
 
-        for key in self.img_dict:
+        # Sort dictionary entries first!
+        for key in sorted(list(self.img_dict.keys())):
             if status_string in self.img_dict[key][0]:
                 image_list.append(key.split()[0])
 
@@ -123,7 +124,7 @@ class Confirmation:
         export_list += header
 
         export_count = 0
-        for key in self.img_dict:
+        for key in sorted(list(self.img_dict.keys())):
             if 'Y' in self.img_dict[key][0]:
                 export_list.append("-------------------------------------------------------\n")
                 export_list += entries_dict[key]

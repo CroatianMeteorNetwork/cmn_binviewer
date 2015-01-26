@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.33
+version = 2.34
 
 import os
 import sys
@@ -507,6 +507,69 @@ class ConfirmationVideo(Frame):
             self.after(int(delay*1000), self.run)
 
 
+class SuperBind():
+    """ Enable any key to have proprer events on being pressed once or being held down longer.
+
+        pressed_function is called when the key is being held down.
+        release_function is caled when the key is pressed only once or released after pressing it constantly
+
+        Arguments:
+            key - key to be pressed, e.g. 'a'
+            master - 'self' from master class
+            root - Tkinter root of master class
+            pressed_function - function to be called when the key is pressed constantly
+            release_function - function to be called when the key is released or pressed only once
+
+        e.g. calling from master class:
+        a_key = SuperBind('a', self, self.root, self.print_press, self.print_release)
+    """
+
+    def __init__(self, key, master, root, pressed_function, release_function):
+        self.afterId = None
+        self.master = master
+        self.root = root
+
+        self.pressed_function = pressed_function
+        self.release_function = release_function
+
+        self.root.bind('<KeyPress-'+key+'>', self.key_press)
+        self.root.bind('<KeyRelease-'+key+'>', self.key_release)
+
+        self.pressed_counter = 0
+
+    def key_press(self, event):
+        if self.afterId != None:
+            self.master.after_cancel( self.afterId )
+            self.afterId = None
+            self.pressed_function()
+        else:
+            if self.pressed_counter > 1:
+                self.pressed_function()
+            else:
+                self.release_function()
+            
+            self.pressed_counter += 1
+
+
+    def key_release(self, event):
+        self.afterId = self.master.after_idle( self.process_release, event )
+
+    def process_release(self, event):
+        self.release_function()
+        self.afterId = None
+        self.pressed_counter = 0
+
+class SuperUnbind():
+    """ Unbind all that was bound by SuperBind.
+    """
+    def __init__(self, key, master, root):
+        self.master = master
+        self.root = root
+
+        self.root.unbind('<KeyPress-'+key+'>')
+        self.root.unbind('<KeyRelease-'+key+'>')
+
+
 class BinViewer(Frame):
     """ Main CMN_binViewer window. 
     """
@@ -640,6 +703,9 @@ class BinViewer(Frame):
         self.old_animation_frame = BooleanVar()
         self.old_animation_frame.set(True)
 
+        # Fast image change flag
+        self.fast_img_change = False
+
         # Confirmation
         self.reject_finish_flag = False
 
@@ -654,11 +720,10 @@ class BinViewer(Frame):
         
         parent.bind("<Home>", self.move_top)
         parent.bind("<End>", self.move_bottom)
-        parent.bind("<Up>", self.move_img_up)
-        parent.bind("<Down>", self.move_img_down)
 
-        parent.bind("<Prior>", self.captured_mode_set)  # Page up
-        parent.bind("<Next>", self.detected_mode_set)  # Page up
+
+        # Call default bindings
+        self.defaultBindings()
 
         parent.bind("<Left>", self.filter_left)
         parent.bind("<Right>", self.filter_right)
@@ -678,6 +743,20 @@ class BinViewer(Frame):
         parent.bind("<Insert>", self.hold_levels_toggle)
 
         parent.bind("<Return>", self.copy_bin_to_sorted)
+
+    def defaultBindings(self):
+        """ Default key bindings. User for program init and resetig after confirmation is done.
+        """
+        # Unbind possible old bindings
+        SuperUnbind("Down", self, self.master)
+
+        # Go fast when pressing the key down (no image loading)
+        SuperBind('Up', self, self.parent, self.fast_img_on, self.fast_img_off)
+        SuperBind('Down', self, self.parent, self.fast_img_on, self.fast_img_off)
+
+        self.parent.bind("<Prior>", self.captured_mode_set)  # Page up
+        self.parent.bind("<Next>", self.detected_mode_set)  # Page up
+        self.parent.bind("<Return>", self.copy_bin_to_sorted)  # Enter
 
     def readFF_decorator(self, func):
         """ Decorator used to pass self.data_type to readFF without changing all readFF statements in the code. 
@@ -938,8 +1017,10 @@ class BinViewer(Frame):
             self.ff_list.selection_clear(0, END)
             self.ff_list.selection_set(next_index)
             self.ff_list.see(next_index)
-            
+
             self.update_image(1)
+
+
         #print 'moved up!'
         moveImgLock.release()
 
@@ -969,6 +1050,8 @@ class BinViewer(Frame):
             self.ff_list.see(next_index)
 
             self.update_image(1)
+
+
 
         moveImgLock.release()
         #print 'moved down!'
@@ -1197,9 +1280,24 @@ class BinViewer(Frame):
 
         updateImgLock.release()
 
+    def fast_img_on(self):
+        """ Set flag for fast image change when key is being held down.
+        """
+        self.fast_img_change = True
+
+    def fast_img_off(self):
+        """ Set flag for fast image change when key is being pressed once.
+        """
+        self.fast_img_change = False
+        self.update_image(0)
+
     def update_image(self, event, update_levels = False):
         """ Updates the current image on the screen.
         """
+
+        # Skip updating image when key is being held down
+        if self.fast_img_change:
+            return 0
 
         # Confirmation video flags, app and window
         global stop_confirmation_video, confirmation_video_app, confirmation_video_root
@@ -2252,7 +2350,9 @@ class BinViewer(Frame):
 
             # Change key binding
             self.parent.bind("<Return>", self.confirmationYes) # Enter
-            self.parent.bind("<Down>", self.confirmationNo) # Down arrow
+            SuperUnbind("Down", self, self.master)
+            # Enable fast rejection
+            SuperBind("Down", self, self.master, lambda: self.confirmationNo(0, fast_img = True), lambda: self.confirmationNo(0, fast_img = False))
             self.parent.unbind("<Prior>") #Page up
             self.parent.unbind("<Next>") #Page up
 
@@ -2320,9 +2420,18 @@ class BinViewer(Frame):
         confYesLock.release()
 
 
-    def confirmationNo(self, event):
+    def confirmationNo(self, event, fast_img = False):
         """ Reject current image in Confirmation instance.
         """
+
+        # Set flag for fast image changing
+        if fast_img:
+            if not self.fast_img_change:
+                self.fast_img_change = True
+        else:
+            if self.fast_img_change:
+                self.fast_img_change = False
+                self.update_image(0)
 
         confNoLock = threading.RLock()
         confNoLock.acquire()
@@ -2469,10 +2578,7 @@ class BinViewer(Frame):
         self.old_confirmation_image = None
 
         # Change key bindings to previous
-        self.parent.bind("<Return>", self.copy_bin_to_sorted)  # Enter
-        self.parent.bind("<Down>", self.move_img_down)  # Down arrow
-        self.parent.bind("<Prior>", self.captured_mode_set)  # Page up
-        self.parent.bind("<Next>", self.detected_mode_set)  # Page up
+        self.defaultBindings()
 
         # Re-enable mode buttons
         self.captured_btn.config(state = NORMAL)
