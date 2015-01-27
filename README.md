@@ -10,7 +10,7 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 3. make calibration (dark, flat) frames from meteor images
 4. perform CAMS confirmation procedure
 
-Latest Windows x32 build: https://dl.dropboxusercontent.com/u/7845267/HMM/CMN_binViewer_setup.exe
+Latest Windows x86 build: https://dl.dropboxusercontent.com/u/7845267/HMM/CMN_binViewer_setup.exe
 
 To build from source you will need:
 - Python 2.7.8 or later
