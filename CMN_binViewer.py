@@ -3252,7 +3252,13 @@ if __name__ == '__main__':
     tk.CallWrapper = Catcher
 
     # Initialize logging, store logfile in AppData
-    log_directory = os.getenv('APPDATA')+os.sep+log_directory+os.sep
+    # For Windows
+    if sys.platform == 'win32':
+        log_directory = os.getenv('APPDATA')+os.sep+log_directory+os.sep
+    else:
+        # For Unix
+        log_directory = os.path.expanduser(os.path.join("~", "." + log_directory))+os.sep
+
 
     mkdir_p(log_directory)
     log = logging.getLogger(__name__)
