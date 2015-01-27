@@ -12,6 +12,19 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 
 Latest Windows x32 build: https://dl.dropboxusercontent.com/u/7845267/HMM/CMN_binViewer_setup.exe
 
+To build from source you will need:
+- Python 2.7.8 or later
+- wxPython3.0 or later
+- scipy 0.14.0 or later
+- numpy 1.8.2 or later
+- PIL (Python Image Library) - Pillow-2.5.1 will do just fine
+
+To make a Windows exe:
+- cx_Freeze-4.3.2.win32-py2.7 or later
+
+Build scripts are provided: setup.py and COMPILE_from_setup.bat (Windows only)
+Making GIFs won't work on any other OS than windows, as the software relies on gifsicle.exe to compress GIF animations.
+
 Copyright (c) 2014-2015, Denis Vida
 * Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
 * images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden

@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.34
+version = 2.35
 
 import os
 import sys
@@ -508,7 +508,7 @@ class ConfirmationVideo(Frame):
 
 
 class SuperBind():
-    """ Enable any key to have proper events on being pressed once or being held down longer.
+    """ Enable any key to have unique events on being pressed once or being held down longer.
 
         pressed_function is called when the key is being held down.
         release_function is called when the key is pressed only once or released after pressing it constantly
@@ -520,14 +520,19 @@ class SuperBind():
             pressed_function - function to be called when the key is pressed constantly
             release_function - function to be called when the key is released or pressed only once
 
+            repeat_press - if True, pressed_function will be called before release_function on only one key press (default True)
+            no_repeat_function - will be run if repeat_press is False (default is None)
+
         e.g. calling from master class:
         a_key = SuperBind('a', self, self.root, self.print_press, self.print_release)
     """
 
-    def __init__(self, key, master, root, pressed_function, release_function):
+    def __init__(self, key, master, root, pressed_function, release_function, repeat_press = True, no_repeat_function = None):
         self.afterId = None
         self.master = master
         self.root = root
+        self.repeat_press = repeat_press
+        self.no_repeat_function = no_repeat_function
 
         self.pressed_function = pressed_function
         self.release_function = release_function
@@ -546,7 +551,13 @@ class SuperBind():
             if self.pressed_counter > 1:
                 self.pressed_function()
             else:
-                self.release_function()
+                if self.repeat_press:
+                    # When this is true, pressed function will be called and release function will be called both
+                    self.release_function()
+                else:
+                    if self.no_repeat_function != None:
+                        # If a special function is provided, run it instead
+                        self.no_repeat_function()
             
             self.pressed_counter += 1
 
@@ -596,7 +607,7 @@ class BinViewer(Frame):
         self.layout_vertical = BooleanVar()  # Layout variable
 
         # Read configuration file
-        orientation, fps_config, self.dir_path, external_video_config = self.read_config()
+        orientation, fps_config, self.dir_path, external_video_config = self.readConfig()
 
         if orientation == 0:
             self.layout_vertical.set(False)
@@ -748,14 +759,16 @@ class BinViewer(Frame):
         """ Default key bindings. User for program init and resetig after confirmation is done.
         """
         # Unbind possible old bindings
-        SuperUnbind("Down", self, self.master)
+        SuperUnbind("Down", self, self.parent)
+        SuperUnbind("Prior", self, self.parent)
+        SuperUnbind("Next", self, self.parent)
 
         # Go fast when pressing the key down (no image loading)
-        SuperBind('Up', self, self.parent, self.fast_img_on, self.fast_img_off)
-        SuperBind('Down', self, self.parent, self.fast_img_on, self.fast_img_off)
+        SuperBind('Up', self, self.parent, lambda: self.fast_img_on('up'), lambda: self.fast_img_off('up'))
+        SuperBind('Down', self, self.parent, lambda: self.fast_img_on('down'), lambda: self.fast_img_off('down'))
 
-        self.parent.bind("<Prior>", self.captured_mode_set)  # Page up
-        self.parent.bind("<Next>", self.detected_mode_set)  # Page up
+        self.parent.bind("<Prior>", self.capturedModeSet)  # Page up
+        self.parent.bind("<Next>", self.detectedModeSet)  # Page down
         self.parent.bind("<Return>", self.copy_bin_to_sorted)  # Enter
 
     def readFF_decorator(self, func):
@@ -792,7 +805,7 @@ class BinViewer(Frame):
 
         return False
 
-    def read_config(self):
+    def readConfig(self):
         """ Reads the configuration file.
         """
 
@@ -929,8 +942,8 @@ class BinViewer(Frame):
         if self.layout_vertical.get() == True:
             # Vertical
 
-            self.ff_list.config(height = 37)  # Listbox size
-            self.ff_list.grid(row = 4, column = 0, rowspan = 7, columnspan = 2, sticky = "NS")  # Listbox position
+            self.listbox.config(height = 37)  # Listbox size
+            self.listbox.grid(row = 4, column = 0, rowspan = 7, columnspan = 2, sticky = "NS")  # Listbox position
             self.scrollbar.grid(row = 4, column = 2, rowspan = 7, sticky = "NS")  # Scrollbar size
 
             self.hold_levels_chk_horizontal.grid_forget()
@@ -969,8 +982,8 @@ class BinViewer(Frame):
         else:
             # Horizontal
                 
-            self.ff_list.config(height = 30) #Listbox size
-            self.ff_list.grid(row = 4, column = 0, rowspan = 7, columnspan = 2, sticky = "NS")  # Listbox position
+            self.listbox.config(height = 30) #Listbox size
+            self.listbox.grid(row = 4, column = 0, rowspan = 7, columnspan = 2, sticky = "NS")  # Listbox position
             self.scrollbar.grid(row = 4, column = 2, rowspan = 7, sticky = "NS")  # Scrollbar size
 
             self.menuBar.entryconfig("Window", state = "disabled")
@@ -1001,11 +1014,11 @@ class BinViewer(Frame):
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
                 
-        if not self.ff_list is self.parent.focus_get():
-            self.ff_list.focus()
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
 
             try:
-                cur_index = int(self.ff_list.curselection()[0])
+                cur_index = int(self.listbox.curselection()[0])
             except:
                 moveImgLock.release()
                 return None
@@ -1013,10 +1026,10 @@ class BinViewer(Frame):
             if next_index < 0:
                 next_index = 0
             
-            self.ff_list.activate(next_index)
-            self.ff_list.selection_clear(0, END)
-            self.ff_list.selection_set(next_index)
-            self.ff_list.see(next_index)
+            self.listbox.activate(next_index)
+            self.listbox.selection_clear(0, END)
+            self.listbox.selection_set(next_index)
+            self.listbox.see(next_index)
 
             self.update_image(1)
 
@@ -1031,23 +1044,23 @@ class BinViewer(Frame):
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
-        if not self.ff_list is self.parent.focus_get():
-            self.ff_list.focus()
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
             
             try:
-                cur_index = int(self.ff_list.curselection()[0])
+                cur_index = int(self.listbox.curselection()[0])
             except:
                 moveImgLock.release()
                 return None
             next_index = cur_index + 1
-            size = self.ff_list.size()-1
+            size = self.listbox.size()-1
             if next_index > size:
                 next_index = size
             
-            self.ff_list.activate(next_index)
-            self.ff_list.selection_clear(0, END)
-            self.ff_list.selection_set(next_index)
-            self.ff_list.see(next_index)
+            self.listbox.activate(next_index)
+            self.listbox.selection_clear(0, END)
+            self.listbox.selection_set(next_index)
+            self.listbox.see(next_index)
 
             self.update_image(1)
 
@@ -1062,13 +1075,13 @@ class BinViewer(Frame):
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
-        if not self.ff_list is self.parent.focus_get():
-            self.ff_list.focus()
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
 
-        self.ff_list.activate(0)
-        self.ff_list.selection_clear(0, END)
-        self.ff_list.selection_set(0)
-        self.ff_list.see(0)
+        self.listbox.activate(0)
+        self.listbox.selection_clear(0, END)
+        self.listbox.selection_set(0)
+        self.listbox.see(0)
 
         moveImgLock.release()
 
@@ -1080,44 +1093,53 @@ class BinViewer(Frame):
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
-        if not self.ff_list is self.parent.focus_get():
-            self.ff_list.focus()
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
 
-        self.ff_list.activate(END)
-        self.ff_list.selection_clear(0, END)
-        self.ff_list.selection_set(END)
-        self.ff_list.see(END)
+        self.listbox.activate(END)
+        self.listbox.selection_clear(0, END)
+        self.listbox.selection_set(END)
+        self.listbox.see(END)
 
         moveImgLock.release()
 
         self.update_image(0)
 
-    def move_index(self, index):
+    def moveIndex(self, index):
         """Moves the list cursor to given index.
         """
 
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
-        if not self.ff_list is self.parent.focus_get():
-            self.ff_list.focus()
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
 
-        self.ff_list.activate(index)
-        self.ff_list.selection_clear(0, END)
-        self.ff_list.selection_set(index)
-        self.ff_list.see(index)
+        self.listbox.activate(index)
+        self.listbox.selection_clear(0, END)
+        self.listbox.selection_set(index)
+        self.listbox.see(index)
 
         moveImgLock.release()
 
         self.update_image(0)
 
-    def captured_mode_set(self, event):
+    def seeCurrent(self):
+        """ Show current selection on listbox.
+        """
+
+        # Index of current image in listbox
+        cur_index = int(self.listbox.curselection()[0])
+
+        self.listbox.see(cur_index)
+
+    def capturedModeSet(self, event):
         """ Change mode to captured.
         """
         self.mode.set(1)
         self.change_mode()
 
-    def detected_mode_set(self, event):
+    def detectedModeSet(self, event):
         """ Change mode to detected.
         """
         self.mode.set(2)
@@ -1271,7 +1293,18 @@ class BinViewer(Frame):
         updateImgLock = threading.RLock()
         updateImgLock.acquire()
 
-        self.current_image = self.ff_list.get(self.ff_list.curselection()[0])
+        try:
+            # Fix issue when sometimes nothing is selected
+            cur_index = self.listbox.curselection()[0]
+        except:
+            cur_index = 0
+            self.listbox.activate(cur_index)
+            self.listbox.selection_clear(0, END)
+            self.listbox.selection_set(cur_index)
+            self.listbox.see(cur_index)
+
+        self.current_image = self.listbox.get(cur_index)
+
         self.confirmationListboxEntry = " ".join(self.current_image.split()[0:2])
 
         # Modify current image for Confirmation mode
@@ -1280,15 +1313,29 @@ class BinViewer(Frame):
 
         updateImgLock.release()
 
-    def fast_img_on(self):
+    def fast_img_on(self, direction):
         """ Set flag for fast image change when key is being held down.
         """
         self.fast_img_change = True
+        
+        if not self.listbox is self.parent.focus_get():
+            if direction == 'up':
+                self.move_img_up(0)
+            else:
+                self.move_img_down(0)
 
-    def fast_img_off(self):
+
+    def fast_img_off(self, direction):
         """ Set flag for fast image change when key is being pressed once.
         """
         self.fast_img_change = False
+
+        if not self.listbox is self.parent.focus_get():
+            if direction == 'up':
+                self.move_img_up(0)
+            else:
+                self.move_img_down(0)
+
         self.update_image(0)
 
     def update_image(self, event, update_levels = False):
@@ -1313,7 +1360,7 @@ class BinViewer(Frame):
         updateImageLock.acquire()
         try: 
             # Check if the list is empty. If it is, do nothing.
-            self.current_image = self.ff_list.get(self.ff_list.curselection()[0])
+            self.current_image = self.listbox.get(self.listbox.curselection()[0])
         except:
             return 0
 
@@ -1771,15 +1818,15 @@ class BinViewer(Frame):
     def update_listbox(self, bin_list):
         """ Updates the listbox with the current entries.
         """
-        self.ff_list.delete(0, END)
+        self.listbox.delete(0, END)
         for line in sorted(bin_list):
-            self.ff_list.insert(END, line)
+            self.listbox.insert(END, line)
 
     def save_image(self, extension, save_as):
         """ Saves the current image with given extension and parameters.
         """
 
-        current_image = self.ff_list.get(ACTIVE)
+        current_image = self.listbox.get(ACTIVE)
         if current_image == '':
             tkMessageBox.showerror("Image error", "No image selected! Saving aborted.")
             return 0
@@ -2197,7 +2244,7 @@ class BinViewer(Frame):
                 temp_index = temp_bin_list.index(old_image)
 
                 # Move to old image position
-                self.move_index(temp_index) 
+                self.moveIndex(temp_index) 
             else:
                 # Move listbox cursor to the top
                 self.move_top(0)
@@ -2257,7 +2304,7 @@ class BinViewer(Frame):
             try:
                 temp_index = str_ff_bin_list.index([bin for bin in str_ff_bin_list if old_image in bin][0])
                 # Move to old image position
-                self.move_index(temp_index)
+                self.moveIndex(temp_index)
             except:
                 # Move listbox cursor to the top
                 self.move_top(0)
@@ -2290,6 +2337,18 @@ class BinViewer(Frame):
     def confirmationStart(self):
         """ Begin with pre-confirmation preparations.
         """
+
+        def _colorGenerator():
+            """ Returns next color in the list on each call.
+            """
+            colors = ['lemon chiffon', 'cyan', 'snow', 'gold', 'turquoise1', 'maroon1']
+            while 1:
+                for color in colors:
+                    yield color
+
+
+        # Used for coloring same image detections with the same color
+        colorGen = _colorGenerator()
 
         # Variable for checking previous index
         self.old_index = 0
@@ -2331,7 +2390,7 @@ class BinViewer(Frame):
 
         self.ConfirmationInstance = Confirmation(image_list, self.dir_path+os.sep+ftpDetectFile, confirmationDirectory, minimum_frames = 0)
 
-        if tkMessageBox.askyesno("Confirmation", "Confirmation key bindings:\n  Enter - confirm\n  Down arrow - reject\n\nThere are "+str(len(self.ConfirmationInstance.getImageList(0)))+" images to be confirmed, do you want to proceed?"):
+        if tkMessageBox.askyesno("Confirmation", "Confirmation key bindings:\n  Enter - confirm\n  Down arrow - reject\n  Page Up - jump to previous image\n  Page Down - jump to next image\n\nThere are "+str(len(self.ConfirmationInstance.getImageList(0)))+" images to be confirmed, do you want to proceed?"):
 
             # Disable mode buttons during confirmation
             self.captured_btn.config(state = DISABLED)
@@ -2348,13 +2407,29 @@ class BinViewer(Frame):
             self.mode.set(3)
             self.change_mode()
 
+            # Color same image detections with same color
+            color_old_image = None
+            for index, entry in enumerate(self.listbox.get(0, END)):
+                entry = entry.split()
+                if entry[0] != color_old_image:
+                    current_color = colorGen.next()
+                    color_old_image = entry[0]
+
+                self.listbox.itemconfig(index, fg = current_color)
+
             # Change key binding
             self.parent.bind("<Return>", self.confirmationYes) # Enter
-            SuperUnbind("Down", self, self.master)
+            SuperUnbind("Down", self, self.parent)
             # Enable fast rejection
-            SuperBind("Down", self, self.master, lambda: self.confirmationNo(0, fast_img = True), lambda: self.confirmationNo(0, fast_img = False))
+            SuperBind("Down", self, self.parent, lambda: self.confirmationNo(0, fast_img = True), lambda: self.confirmationNo(0, fast_img = False))
+
+            # Unbind old bindings
             self.parent.unbind("<Prior>") #Page up
-            self.parent.unbind("<Next>") #Page up
+            self.parent.unbind("<Next>") #Page down
+
+            # Jump to next FF bin with Page Up and Page down, not just next detection
+            SuperBind('Prior', self, self.parent, lambda: self.confirmationJumpPreviousImage(0, fast_img = True), lambda: self.confirmationJumpPreviousImage(0, fast_img = False), repeat_press = False, no_repeat_function = self.seeCurrent)
+            SuperBind('Next', self, self.parent, lambda: self.confirmationJumpNextImage(0, fast_img = True), lambda: self.confirmationJumpNextImage(0, fast_img = False), repeat_press = False, no_repeat_function = self.seeCurrent)
 
             # Disable starting confirmation
             self.confirmationMenu.entryconfig("Start", state = "disabled")
@@ -2369,7 +2444,7 @@ class BinViewer(Frame):
 
             # Set gamma a bit higher and turn of deinterlace
             self.hold_levels.set(True)
-            # Set gamma to about 1.3, so the meteors are visible better
+            # Set gamma to about 1.3, so the meteors are better visible
             self.gamma_scale.set(-0.12)
             self.deinterlace.set(True)
 
@@ -2390,31 +2465,31 @@ class BinViewer(Frame):
 
         newEntry = self.confirmationListboxEntry+" Y  "
 
-        if not self.ff_list is self.parent.focus_get():
-            self.ff_list.focus()
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
 
-        cur_index = int(self.ff_list.curselection()[0])
+        cur_index = int(self.listbox.curselection()[0])
 
-        self.ff_list.insert(ACTIVE, newEntry)
-        self.ff_list.delete(ACTIVE)
+        self.listbox.insert(ACTIVE, newEntry)
+        self.listbox.delete(ACTIVE)
 
         # Change text color to green
-        self.ff_list.itemconfig(cur_index, fg = 'green')
+        self.listbox.itemconfig(cur_index, fg = 'green')
 
         next_index = cur_index + 1
-        size = self.ff_list.size()-1
+        size = self.listbox.size()-1
         if next_index > size:
             next_index = size
         
-        self.ff_list.activate(next_index)
-        self.ff_list.selection_clear(0, END)
-        self.ff_list.selection_set(next_index)
-        self.ff_list.see(next_index)
+        self.listbox.activate(next_index)
+        self.listbox.selection_clear(0, END)
+        self.listbox.selection_set(next_index)
+        self.listbox.see(next_index)
 
         self.update_image(0)
 
         # Detect list end
-        if cur_index == self.ff_list.size()-1:
+        if cur_index == self.listbox.size()-1:
             self.confirmationEnd()
 
         confYesLock.release()
@@ -2436,12 +2511,12 @@ class BinViewer(Frame):
         confNoLock = threading.RLock()
         confNoLock.acquire()
 
-        if not self.ff_list is self.parent.focus_get():
+        if not self.listbox is self.parent.focus_get():
             self.move_img_down(0)
 
-        cur_index = int(self.ff_list.curselection()[0])
+        cur_index = int(self.listbox.curselection()[0])
 
-        size = self.ff_list.size()-1
+        size = self.listbox.size()-1
 
         # If it isn't the last element
         if (cur_index != size) or (cur_index != self.old_index):
@@ -2450,10 +2525,10 @@ class BinViewer(Frame):
             if prev_index < 0:
                 prev_index = 0
             
-            self.ff_list.activate(prev_index)
-            self.ff_list.selection_clear(0, END)
-            self.ff_list.selection_set(prev_index)
-            self.ff_list.see(prev_index)
+            self.listbox.activate(prev_index)
+            self.listbox.selection_clear(0, END)
+            self.listbox.selection_set(prev_index)
+            self.listbox.see(prev_index)
 
         self.update_current_image()
 
@@ -2463,27 +2538,27 @@ class BinViewer(Frame):
 
         
         # If the last element is selected
-        if (cur_index == size) and (cur_index == self.old_index):
+        if (cur_index == size):
             prev_index = cur_index
 
-            self.ff_list.delete(END)
-            self.ff_list.insert(END, newEntry)
+            self.listbox.delete(END)
+            self.listbox.insert(END, newEntry)
 
             self.reject_finish_flag = True
 
         else:
             self.reject_finish_flag = False
-            self.ff_list.insert(prev_index, newEntry)
-            self.ff_list.delete(cur_index)
+            self.listbox.insert(prev_index, newEntry)
+            self.listbox.delete(cur_index)
 
-        # Change text color to green
-        self.ff_list.itemconfig(prev_index, fg = 'red')
+        # Change text color to red
+        self.listbox.itemconfig(prev_index, fg = 'red')
 
         # Activate next
-        self.ff_list.activate(cur_index)
-        self.ff_list.selection_clear(0, END)
-        self.ff_list.selection_set(cur_index)
-        self.ff_list.see(cur_index)
+        self.listbox.activate(cur_index)
+        self.listbox.selection_clear(0, END)
+        self.listbox.selection_set(cur_index)
+        self.listbox.see(cur_index)
 
         self.update_current_image()
 
@@ -2494,6 +2569,123 @@ class BinViewer(Frame):
             self.confirmationEnd()
 
         confNoLock.release()
+
+    def confirmationJumpPreviousImage(self, event, fast_img = False):
+        """ Jump to previous FF bin in confirmation, not just next detection.
+        """
+
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
+
+        if fast_img:
+            self.fast_img_change = True
+        else:
+            self.fast_img_change = False
+
+        # Current image
+        cur_image = self.current_image
+
+        # Index of current image in listbox
+        cur_index = int(self.listbox.curselection()[0])
+
+        self.listbox.see(cur_index)
+
+        listbox_entries = self.listbox.get(0, END)
+
+        bottom_image = None
+
+        # Go through all entries and find the first detecting on the previous image
+        for entry in reversed(listbox_entries[:cur_index+1]):
+            temp_image = entry.split()[0]
+
+            # Decrement current index 
+            if temp_image == cur_image:
+                if not cur_index == 0:
+                    cur_index -= 1
+            else:
+                if cur_index == 0:
+                    # Break if reached first element in listbox
+                    break
+
+                # Jump over all same images until you reach the first one of the same
+                if bottom_image != temp_image:
+                    if bottom_image == None:
+                        bottom_image = temp_image
+                    else:
+                        # Increment if found image that is the first detection of the same image and break
+                        cur_index += 1
+                        break
+
+                cur_index -= 1
+
+        self.listbox.activate(cur_index)
+        self.listbox.selection_clear(0, END)
+        self.listbox.selection_set(cur_index)
+        self.listbox.see(cur_index)
+
+        self.update_current_image()
+
+        self.update_image(0)
+
+    def confirmationJumpNextImage(self, event, fast_img = False):
+        """ Jump to next FF bin in confirmation, not just next detection.
+        """
+
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
+
+        if fast_img:
+            self.fast_img_change = True
+        else:
+            self.fast_img_change = False
+
+
+        # Current image
+        cur_image = self.current_image
+
+        # Index of current image in listbox
+        cur_index = int(self.listbox.curselection()[0])
+
+        #self.listbox.see(cur_index)
+
+        listbox_entries = self.listbox.get(0, END)
+        listbox_size = len(listbox_entries)
+
+        if cur_index == listbox_size - 1:
+            self.confirmationNo(0)
+            return 0
+
+        # Go through all entries and find the next image
+        for entry in listbox_entries[cur_index:]:
+            temp_image = entry.split()[0]
+
+            # Increment current index
+            if temp_image == cur_image:
+                if not cur_index >= listbox_size-1:
+                    cur_index += 1
+
+                self.listbox.activate(cur_index)
+                self.listbox.selection_clear(0, END)
+                self.listbox.selection_set(cur_index)
+                self.listbox.see(cur_index)
+                self.confirmationNo(0, fast_img = True)
+            else:
+                break
+
+        if not fast_img:
+            self.fast_img_change = False
+
+        if cur_index >= listbox_size - 1:
+            cur_index = listbox_size - 1
+
+        self.listbox.activate(cur_index)
+        self.listbox.selection_clear(0, END)
+        self.listbox.selection_set(cur_index)
+        self.listbox.see(cur_index)
+
+        self.update_current_image()
+
+        self.update_image(0)
 
 
     def confirmationEnd(self):
@@ -2807,11 +2999,11 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
 
         # Listbox
         self.scrollbar = Scrollbar(self)
-        self.ff_list = Listbox(self, width = 47, yscrollcommand=self.scrollbar.set, exportselection=0, activestyle = "none", bg = global_bg, fg = global_fg)
+        self.listbox = Listbox(self, width = 47, yscrollcommand=self.scrollbar.set, exportselection=0, activestyle = "none", bg = global_bg, fg = global_fg)
         # Listbox position is set in update_layout function
         
-        self.ff_list.bind('<<ListboxSelect>>', self.update_image) 
-        self.scrollbar.config(command = self.ff_list.yview)
+        self.listbox.bind('<<ListboxSelect>>', self.update_image) 
+        self.scrollbar.config(command = self.listbox.yview)
 
         # Filters panel
         filter_panel = LabelFrame(self, text=' Filters ')
