@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.35
+version = 2.36
 
 import os
 import sys
@@ -717,9 +717,6 @@ class BinViewer(Frame):
         # Fast image change flag
         self.fast_img_change = False
 
-        # Confirmation
-        self.reject_finish_flag = False
-
         # Misc
         global readFF
         readFF = self.readFF_decorator(readFF) # Decorate readFF function by also passing datatype, so that readFF doesn't have to be changed through the code
@@ -759,7 +756,7 @@ class BinViewer(Frame):
         """ Default key bindings. User for program init and resetig after confirmation is done.
         """
         # Unbind possible old bindings
-        SuperUnbind("Down", self, self.parent)
+        SuperUnbind("Delete", self, self.parent)
         SuperUnbind("Prior", self, self.parent)
         SuperUnbind("Next", self, self.parent)
 
@@ -770,6 +767,7 @@ class BinViewer(Frame):
         self.parent.bind("<Prior>", self.capturedModeSet)  # Page up
         self.parent.bind("<Next>", self.detectedModeSet)  # Page down
         self.parent.bind("<Return>", self.copy_bin_to_sorted)  # Enter
+        self.parent.bind("<Delete>", self.deinterlace_toggle)  # Deinterlace
 
     def readFF_decorator(self, func):
         """ Decorator used to pass self.data_type to readFF without changing all readFF statements in the code. 
@@ -2350,9 +2348,6 @@ class BinViewer(Frame):
         # Used for coloring same image detections with the same color
         colorGen = _colorGenerator()
 
-        # Variable for checking previous index
-        self.old_index = 0
-
         # Check if viewing Skypatrol images
         if self.data_type.get() == 2:
             tkMessageBox.showerror("Skypatrol", "Confirmation is only available for CAMS standard files!")
@@ -2390,7 +2385,7 @@ class BinViewer(Frame):
 
         self.ConfirmationInstance = Confirmation(image_list, self.dir_path+os.sep+ftpDetectFile, confirmationDirectory, minimum_frames = 0)
 
-        if tkMessageBox.askyesno("Confirmation", "Confirmation key bindings:\n  Enter - confirm\n  Down arrow - reject\n  Page Up - jump to previous image\n  Page Down - jump to next image\n\nThere are "+str(len(self.ConfirmationInstance.getImageList(0)))+" images to be confirmed, do you want to proceed?"):
+        if tkMessageBox.askyesno("Confirmation", "Confirmation key bindings:\n  Enter - confirm\n  Delete - reject\n  Page Up - jump to previous image\n  Page Down - jump to next image\n\nThere are "+str(len(self.ConfirmationInstance.getImageList(0)))+" images to be confirmed, do you want to proceed?"):
 
             # Disable mode buttons during confirmation
             self.captured_btn.config(state = DISABLED)
@@ -2419,9 +2414,10 @@ class BinViewer(Frame):
 
             # Change key binding
             self.parent.bind("<Return>", self.confirmationYes) # Enter
-            SuperUnbind("Down", self, self.parent)
+
+            SuperUnbind("Delete", self, self.parent)
             # Enable fast rejection
-            SuperBind("Down", self, self.parent, lambda: self.confirmationNo(0, fast_img = True), lambda: self.confirmationNo(0, fast_img = False))
+            SuperBind("Delete", self, self.parent, lambda: self.confirmationNo(0, fast_img = True), lambda: self.confirmationNo(0, fast_img = False), repeat_press = False)
 
             # Unbind old bindings
             self.parent.unbind("<Prior>") #Page up
@@ -2478,6 +2474,7 @@ class BinViewer(Frame):
 
         next_index = cur_index + 1
         size = self.listbox.size()-1
+
         if next_index > size:
             next_index = size
         
@@ -2493,7 +2490,6 @@ class BinViewer(Frame):
             self.confirmationEnd()
 
         confYesLock.release()
-
 
     def confirmationNo(self, event, fast_img = False):
         """ Reject current image in Confirmation instance.
@@ -2511,64 +2507,44 @@ class BinViewer(Frame):
         confNoLock = threading.RLock()
         confNoLock.acquire()
 
-        if not self.listbox is self.parent.focus_get():
-            self.move_img_down(0)
-
-        cur_index = int(self.listbox.curselection()[0])
-
-        size = self.listbox.size()-1
-
-        # If it isn't the last element
-        if (cur_index != size) or (cur_index != self.old_index):
-
-            prev_index = cur_index - 1
-            if prev_index < 0:
-                prev_index = 0
-            
-            self.listbox.activate(prev_index)
-            self.listbox.selection_clear(0, END)
-            self.listbox.selection_set(prev_index)
-            self.listbox.see(prev_index)
-
-        self.update_current_image()
-
         self.ConfirmationInstance.rejectImage(self.confirmationListboxEntry)
 
         newEntry = self.confirmationListboxEntry+"   N"
 
+        if not self.listbox is self.parent.focus_get():
+            self.listbox.focus()
+
+        cur_index = int(self.listbox.curselection()[0])
+
+        self.listbox.delete(cur_index)
+        self.listbox.insert(cur_index, newEntry)
         
-        # If the last element is selected
-        if (cur_index == size):
-            prev_index = cur_index
 
-            self.listbox.delete(END)
-            self.listbox.insert(END, newEntry)
+        # Change text color to green
+        self.listbox.itemconfig(cur_index, fg = 'red')
 
-            self.reject_finish_flag = True
 
-        else:
-            self.reject_finish_flag = False
-            self.listbox.insert(prev_index, newEntry)
-            self.listbox.delete(cur_index)
+        next_index = cur_index + 1
+        size = self.listbox.size()-1
 
-        # Change text color to red
-        self.listbox.itemconfig(prev_index, fg = 'red')
-
-        # Activate next
-        self.listbox.activate(cur_index)
+        if next_index > size:
+            next_index = size
+        
+        self.listbox.activate(next_index)
         self.listbox.selection_clear(0, END)
-        self.listbox.selection_set(cur_index)
-        self.listbox.see(cur_index)
+        self.listbox.selection_set(next_index)
+        self.listbox.see(next_index)
+
+        self.update_image(0)
 
         self.update_current_image()
 
-        self.old_index = cur_index
-
         # Detect list end
-        if (cur_index == size) and (cur_index == self.old_index) and (self.reject_finish_flag):
+        if cur_index == self.listbox.size()-1:
             self.confirmationEnd()
 
         confNoLock.release()
+
 
     def confirmationJumpPreviousImage(self, event, fast_img = False):
         """ Jump to previous FF bin in confirmation, not just next detection.
@@ -2661,14 +2637,15 @@ class BinViewer(Frame):
 
             # Increment current index
             if temp_image == cur_image:
+
+                #self.listbox.activate(cur_index)
+                #self.listbox.selection_clear(0, END)
+                #self.listbox.selection_set(cur_index)
+                #self.listbox.see(cur_index)
+                self.confirmationNo(0, fast_img = True)
+
                 if not cur_index >= listbox_size-1:
                     cur_index += 1
-
-                self.listbox.activate(cur_index)
-                self.listbox.selection_clear(0, END)
-                self.listbox.selection_set(cur_index)
-                self.listbox.see(cur_index)
-                self.confirmationNo(0, fast_img = True)
             else:
                 break
 
@@ -2678,10 +2655,10 @@ class BinViewer(Frame):
         if cur_index >= listbox_size - 1:
             cur_index = listbox_size - 1
 
-        self.listbox.activate(cur_index)
-        self.listbox.selection_clear(0, END)
-        self.listbox.selection_set(cur_index)
-        self.listbox.see(cur_index)
+        #self.listbox.activate(cur_index)
+        #self.listbox.selection_clear(0, END)
+        #self.listbox.selection_set(cur_index)
+        #self.listbox.see(cur_index)
 
         self.update_current_image()
 

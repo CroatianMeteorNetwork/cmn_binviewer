@@ -66,3 +66,7 @@ v2.34 - Jan. 26, 2015
 v2.35 - Jan. 27, 2015
   - added skipping by image, not only detection
   - added coloring of same images in confirmation, colors: 'lemon chiffon', 'cyan', 'snow', 'gold', 'turquoise1', 'maroon1' taken from: http://cs.smith.edu/dftwiki/images/3/3d/TkInterColorCharts.png
+  
+v2.36 - Jan. 28, 2015
+  - corrected confirmation behaviour at the end of the listbox
+  - changed key bindings for rejecting image in confirmation to Delete
