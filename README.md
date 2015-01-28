@@ -22,8 +22,7 @@ To build from source you will need:
 To make a Windows exe:
 - cx_Freeze-4.3.2.win32-py2.7 or later
 
-Build scripts are provided: setup.py and COMPILE_from_setup.bat (Windows only)
-Making GIFs won't work on any other OS than Windows, as the software relies on gifsicle.exe to compress GIF animations.
+Build scripts are provided: setup.py and COMPILE_from_setup.bat (Windows only). Making GIFs won't work on any other OS than Windows, as the software relies on gifsicle.exe to compress GIF animations.
 
 Copyright (c) 2014-2015, Denis Vida
 * Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
@@ -31,12 +30,16 @@ Copyright (c) 2014-2015, Denis Vida
 * gifsicle: Copyright © 1997-2013 Eddie Kohler
 
 **Acknowledgements**
+
 Many thanks to:
+
 - **Damir Šegon** for support and suggestions 
 - **Paul Roggermans** for thorough testing and objective criticism 
 - **Peter S. Gural** for technical support
+
 These are people without whom this software wouldn't be as half as good as it is today.
 
 **Citations**
+
 For academic use, please cite the paper:
 >Vida D., Šegon D., Gural P. S., Martinović G., Skokić I., 2014, *CMN_ADAPT and CMN_binViewer software*, **Proceedings of the IMC, Giron, 2014**, 59 -- 63.
