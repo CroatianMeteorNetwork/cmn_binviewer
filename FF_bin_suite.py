@@ -39,7 +39,8 @@ font_name = "COUR.TTF"
 run_dir = os.path.abspath(".")
 
 class ff_struct:
-	""" Default structure for a FF*.bin file"""
+	""" Default structure for a FF*.bin file.
+	"""
 	def __init__(self):
 		self.nrows = 0
 		self.ncols = 0
@@ -66,7 +67,8 @@ def truth_generator():
 
 
 def readFF(filename, datatype = 1):
-	"""Function for reading FF bin files
+	"""Function for reading FF bin files.
+
 	Returns a structure that allows access to individual parameters of the image
 	e.g. print readFF("FF300_20140802_205545_600_0090624.bin").nrows to print out the number of rows
 	e.g. print readFF("FF300_20140802_205545_600_0090624.bin").maxpixel to print out the array of nrows*ncols numbers which represent the image
@@ -99,7 +101,8 @@ def readFF(filename, datatype = 1):
 	return ff
 
 def readSkypatrolBMP(img_name):
-	""" Reads Skypatrol BMP and returns maxpixel and maxframe image array 
+	""" Reads Skypatrol BMP and returns maxpixel and maxframe image array.
+
 	INPUTS:
 		img_name: path to Skypatrol BMP image
 	OUTPUTS:
@@ -135,7 +138,8 @@ def readSkypatrolBMP(img_name):
 	return ff
 
 def buildFF(ff, kframe, videoFlag = False):
-	"""Function for returning the K frame from a FF bin file, and makes brightness corrections if videoFlag variable is set to True
+	"""Function for returning the K frame from a FF bin file, and makes brightness corrections if videoFlag variable is set to True.
+
 	Returns an array of nrows * ncols that represents the k-frame image
 	e.g. buildFF(readFF("FF300_20140802_205545_600_0090624.bin"), 100) returns the 100th frame (range 0 - 255)"""
 
@@ -156,7 +160,8 @@ def buildFF(ff, kframe, videoFlag = False):
 	return img
 
 def add_text(ff_array, img_text):
-	""" Adds text to numpy array image """
+	""" Adds text to numpy array image.
+	"""
 	im = img.fromarray(np.uint8(ff_array))
 
 	im = im.convert('RGB')
@@ -174,7 +179,8 @@ def add_text(ff_array, img_text):
 	return np.array(im)
 
 def saveImage(ff_array, img_name, print_name = True):
-	""" Save image (choose format by writing extension, e.g. *.jpg or *.bmp) from numpy array with name on it if print_name is True (default)
+	""" Save image (choose format by writing extension, e.g. *.jpg or *.bmp) from numpy array with name on it if print_name is True (default).
+
 	ff_array: numpy array, e.g. ff_array = buildFF(readFF("FF300_20140802_205545_600_0090624.bin"), 250)
 	img_name: name of JPG image to be saved
 
@@ -194,7 +200,8 @@ def saveImage(ff_array, img_name, print_name = True):
 	im.save(img_name)
 
 def deinterlace_array_odd(ff_image):
-	""" Deinterlaces the numpy array image by duplicating the odd frame """
+	""" Deinterlaces the numpy array image by duplicating the odd frame. 
+	"""
 	truth_gen = truth_generator()
 	deinterlaced_image = np.copy(ff_image) #deepcopy ff_image to new array
 	old_row = ff_image[0]
@@ -210,7 +217,8 @@ def deinterlace_array_odd(ff_image):
 	return deinterlaced_image
 
 def deinterlace_array_even(ff_image):
-	""" Deinterlaces the numpy array image by duplicating the even frame """
+	""" Deinterlaces the numpy array image by duplicating the even frame. 
+	"""
 	truth_gen = truth_generator()
 	deinterlaced_image = np.copy(ff_image) #deepcopy ff_image to new array
 	old_row = ff_image[-1]
@@ -224,7 +232,8 @@ def deinterlace_array_even(ff_image):
 	return deinterlaced_image
 
 def blend_lighten(arr1, arr2):
-	""" Blends two image array with lighen method (only takes the lighter pixel on each spot)."""
+	""" Blends two image array with lighen method (only takes the lighter pixel on each spot).
+	"""
 	arr1 = arr1.astype(np.int16)
 	temp = arr1 - arr2 #Subtract two arrays
 	temp[temp > 0] = 0 #Repace all >0 evements with 0
@@ -234,14 +243,16 @@ def blend_lighten(arr1, arr2):
 
 
 def move_array_1up(array):
- 	""" Moves image array 1 pixel up, and fills the bottom with zeroes"""
+ 	""" Moves image array 1 pixel up, and fills the bottom with zeroes.
+ 	"""
  	array = np.delete(array, (0), axis=0)
  	array = np.vstack([array, np.zeros(len(array[0]), dtype = np.uint8)])
 
  	return array
 
 def deinterlace_blend(image_array):
-	""" Deinterlaces the image by making an odd and even frame, then blends them by lighten method"""
+	""" Deinterlaces the image by making an odd and even frame, then blends them by lighten method.
+	"""
 
 	#image_odd_d = deinterlace_array_odd(image_array)
 	image_odd_d = deinterlace_array_odd(image_array)
@@ -252,7 +263,8 @@ def deinterlace_blend(image_array):
 
 
 def optimize_GIF(gif_name, runfolder = '.'):
-	""" Run GIF optimization using gifsicle.exe software. It reduces the GIF file size. Drawback is that it is not correctly shown in all image viewers. Firefox works the best"""
+	""" Run GIF optimization using gifsicle.exe software. It reduces the GIF file size. Drawback is that it is not correctly shown in all image viewers. Firefox works the best.
+	"""
 	old_dir = os.getcwd()
 	os.chdir(run_dir)
 	#gifsicle.exe -O3 --use-colormap grey --colors 64 --careful .\FF453_20140808_002244_870_0468224fr_143-160.gif -o done.gif
@@ -273,6 +285,7 @@ def optimize_GIF(gif_name, runfolder = '.'):
 
 def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace = True, print_name = True, optimize = True, Flat_frame = None, Flat_frame_scalar = None, dark_frame = None, gif_name_parse = None, repeat = True, fps = 25, minv = None, gamma = None, maxv = None, perfield = False):
 	""" Makes a GIF animation for given FF_file, in given frame range (0-255).
+
 	start_frame: Starting frame (default 0)
 	end_frame: Last frame for gif animation (default 255)
 	ff_dir: A directory in which FF*.bin files are can be given as ff_dir (default is the current directory)
@@ -382,7 +395,8 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
 	return True
 
 def get_FTPdetect_frames(FTPdetect_file, minimum_frames):
-	""" Returns a list of FF*.bin files with coresponding frames for a detected meteor in format [["FF*bin", (start_frame, end_frame)]] """
+	""" Returns a list of FF*.bin files with coresponding frames for a detected meteor in format [["FF*bin", (start_frame, end_frame)]]
+	"""
 
 	def get_frames(frame_list):
 		if len(frame_list)<minimum_frames*2: #Times 2 because len(frames) actually contains every half-frame also
@@ -433,7 +447,8 @@ def get_FTPdetect_frames(FTPdetect_file, minimum_frames):
 	return ff_bin_list
 
 def make_night_GIF(night_dir, minimum_frames = 10):
-	"""Makes a GIF of events during the whole night. The minimum number of frames for event to pass the treshold filter is given in minimum_frames variable (10 is default)
+	"""Makes a GIF of events during the whole night. The minimum number of frames for event to pass the treshold filter is given in minimum_frames variable (10 is default).
+
 	Usage:
 	e.g. make_night_GIF("C:\\Users\\Laptop\\Desktop\\2014080809-Processed")
 	"""
@@ -468,7 +483,8 @@ def make_night_GIF(night_dir, minimum_frames = 10):
 	return True
 
 def fixFlat_frame(Flat_frame, Flat_frame_scalar):
-	""" Makes a Flat_frame image by calculating Flat_frame value of every column, to prevent spots on the image"""
+	""" Makes a Flat_frame image by calculating Flat_frame value of every column, to prevent spots on the image.
+	"""
 	
 	nrows = len(Flat_frame)
 	ncols = len(Flat_frame[0])
@@ -486,7 +502,8 @@ def fixFlat_frame(Flat_frame, Flat_frame_scalar):
 
 
 def add_scalar(array, scalar, min_clip = 0, max_clip = 255):
-	""" Function that add a scalar value to all 2D array elements, with respect to minumum and maximum values"""
+	""" Function that add a scalar value to all 2D array elements, with respect to minumum and maximum values.
+	"""
 	nrows = len(array)
 	ncols = len(array[0])
 	scalar_array = np.zeros(shape=(nrows, ncols), dtype=np.int)
@@ -496,7 +513,8 @@ def add_scalar(array, scalar, min_clip = 0, max_clip = 255):
 	return np.clip(sum_array, min_clip, max_clip) #Clip values
 	
 def max_nomean(ff_bin, Flat_frame = None, Flat_frame_scalar = None):
-	""" Returns an array which represents maxpixel image with removed flat field and mean background, so just detections are visible"""
+	""" Returns an array which represents maxpixel image with removed flat field and mean background, so just detections are visible.
+	"""
 
 	img_average = ff_bin.avepixel
 	if Flat_frame != None:
@@ -511,7 +529,8 @@ def max_nomean(ff_bin, Flat_frame = None, Flat_frame_scalar = None):
 	return img_max_noavg
 
 def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_frame = None, deinterlace = False, field = 0):
-	""" Processes given array with given frames. Used in CMN_binViewer."""
+	""" Processes given array with given frames. Used in CMN_binViewer.
+	"""
 
 	if dark_frame != None:
 		img_array = np.subtract(img_array, dark_frame)
@@ -542,6 +561,7 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
 
 def process_avepixel(ff_bin, Flat_frame, Flat_frame_scalar, dark_frame = None, mode = 0):
 	""" Processes avepixel of a given FF*.bin file. Makes flat field division and deinterlacing.
+
 	ff_bin: name of FF*.bin file
 	Flat_frame: flat frame array (load flat frame or make it)
 	Flat_frame_scalar: flat frame median value (load flat frame or make it)
@@ -593,6 +613,7 @@ def process_avepixel(ff_bin, Flat_frame, Flat_frame_scalar, dark_frame = None, m
 
 def get_processed_frames(ff_bin, save_path = '.'+os.sep, data_type = 1, Flat_frame = None, Flat_frame_scalar = None, dark_frame = None, start_frame = 0, end_frame = 255):
 	""" Makes calibrated BMPs of a particular detection. Used for fireball processing.
+
 	ff_bin: *.bin file (or Skypatrol BMP) name and path
 	save_path: path where to save processed frames
 	data_type: 1 for CAMS (default), 2 for Skypatrol
@@ -657,6 +678,7 @@ def get_processed_frames(ff_bin, save_path = '.'+os.sep, data_type = 1, Flat_fra
 
 def get_detection_only(ff_content, start_frame = 0, end_frame = 255, Flat_frame = None, Flat_frame_scalar = None, dark_frame = None, deinterlace = False):
 	""" Return an array which contains only the detection frames, lighten blended.
+
 	ff_content: ff file structure
 	start_frame: default 0
 	end_frame: default 255
@@ -678,13 +700,16 @@ def get_detection_only(ff_content, start_frame = 0, end_frame = 255, Flat_frame 
 
 @np.vectorize
 def blend_darken(a, b):
-	""" Helper function for darken blending"""
+	""" Helper function for darken blending.
+	"""
 	if a>b:
 		return b
 	return a
 
 @np.vectorize
 def blend_average(*args):
+	""" Blends images by averaging pixels.
+	"""
 	s = 0
 	for i in args:
 		s+=i
@@ -692,6 +717,8 @@ def blend_average(*args):
 
 @np.vectorize
 def blend_median(*args):
+	""" Blends images by taking the median of each pixel.
+	"""
 	sort = sorted(args)
 	sort_len = len(sort)
 	if sort_len == 1:
@@ -702,7 +729,8 @@ def blend_median(*args):
 	return sort[middle]
 
 def chop_flat_processes(img_num, step = 31):
-	""" Gives a tuple of ranges to chop the flat field arrays if there are more than 32 of them. For img_num = 70, it would return [(0, 32), (32, 64), (64, 70)]"""
+	""" Gives a tuple of ranges to chop the flat field arrays if there are more than 32 of them. For img_num = 70, it would return [(0, 32), (32, 64), (64, 70)]
+	"""
 	ranges_list = []
 	old = 0
 	for i in range(step, img_num, step):
@@ -712,7 +740,8 @@ def chop_flat_processes(img_num, step = 31):
 	return ranges_list
 
 def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dark_frame = None):
-	""" Return a flat frame array and flat frame median value. Makes a flat frame by comparing given images and taking the minimum value on a given position of all images
+	""" Return a flat frame array and flat frame median value. Makes a flat frame by comparing given images and taking the minimum value on a given position of all images.
+
 	flat_dir: directroy where FF*.bin files are held
 	flat_save: name of file to be saved, dave directory is flat_dir (default: flat.bmp)
 	dark_frame: array which contains dark frame (None by default, then it is read from the folder, if it exists)
@@ -781,7 +810,8 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
 	return Flat_frame, Flat_frame_scalar
 
 def load_flat(flat_bmp = 'flat.bmp'):
-	""" Loads a flat frame from BMP file into numpy array and calculates flat mean value 
+	""" Loads a flat frame from BMP file into numpy array and calculates flat mean value.
+
 	flat_bmp: name of BMP which contains the flat file (default: .\\flat.bmp)"""
 	flat_img = img.open(flat_bmp)
 	flat_img = flat_img.convert('L')
@@ -794,7 +824,8 @@ def load_flat(flat_bmp = 'flat.bmp'):
 	return flat_array, Flat_frame_scalar
 
 def load_dark(dark_bmp = 'dark.bmp'):
-	""" Loads a dark frame from BMP file into numpy array
+	""" Loads a dark frame from BMP file into numpy array.
+
 	dark_bmp: name of BMP which contains the dark file (default: .\\dark.bmp)"""
 
 	dark_img = img.open(dark_bmp)
@@ -807,7 +838,8 @@ def load_dark(dark_bmp = 'dark.bmp'):
 
 
 def get_FTPdetect_coordinates(FTPdetect_file_content, ff_bin, meteor_no = 1):
-	""" Returns a list of FF*.bin coordinates of a specific bin file and a meteor on that image as a list of tuples e.g. [(15, 20), (16, 21), (17, 22)] and the rotation angle of the meteor"""
+	""" Returns a list of FF*.bin coordinates of a specific bin file and a meteor on that image as a list of tuples e.g. [(15, 20), (16, 21), (17, 22)] and the rotation angle of the meteor.
+	"""
 
 	if int(FTPdetect_file_content[0].split('=')[1]) == 0: #Solving issue when no meteors are in the file
 		return []
@@ -860,7 +892,8 @@ def get_FTPdetect_coordinates(FTPdetect_file_content, ff_bin, meteor_no = 1):
 	return coord_list, angle
 
 def markDetections(imageArray, detectionsArray):
-	""" Takes an B/W 8-bit image and marks detections by pixel coordinates in detectionsArray. Returns a RGB array. """
+	""" Takes an B/W 8-bit image and marks detections by pixel coordinates in detectionsArray. Returns a RGB array. 
+	"""
 
 	redImage = np.copy(imageArray)
 	greenImage = np.copy(imageArray)
@@ -878,7 +911,8 @@ def markDetections(imageArray, detectionsArray):
 
 
 def find_crop_size(crop_array, size = 15):
-	""" Goes thorugh rotated crop_array and finds values with 255. Marks the first and last position of those values and widens the crop coordinates by "size" in pixels"""
+	""" Goes thorugh rotated crop_array and finds values with 255. Marks the first and last position of those values and widens the crop coordinates by "size" in pixels.
+	"""
 	nrows = len(crop_array)
 	ncols = len(crop_array[0])
 	first_coord = (0, 0)
@@ -911,7 +945,8 @@ def find_crop_size(crop_array, size = 15):
 
 
 def rotate_n_crop(ff_bin, ff_path, Flat_frame, Flat_frame_scalar):
-	""" Function for rotating the maxframe from bin file and cropping the meteor part based on the FTP_detectinfo detection data"""
+	""" Function for rotating the maxframe from bin file and cropping the meteor part based on the FTP_detectinfo detection data.
+	"""
 
 	if not ff_path[-1] == os.sep:
 		ff_path += os.sep
@@ -967,7 +1002,8 @@ def rotate_n_crop(ff_bin, ff_path, Flat_frame, Flat_frame_scalar):
 	return max_nomean_croped
 
 def get_lightcurve(meteor_array):
-	""" Calculates the sum of column level values of a given array. For croped meteor image this gives its lightcurve"""
+	""" Calculates the sum of column level values of a given array. For croped meteor image this gives its lightcurve.
+	"""
 	ncols = len(meteor_array[0])
 
 	lightcurve = []
@@ -978,7 +1014,8 @@ def get_lightcurve(meteor_array):
 
 
 def colorize_maxframe(ff_bin, minv = None, gamma = None, maxv = None):
-	""" Colorizes the B/W maxframe into red/blue image. Odd frames are colored red, even frames are colored blue"""
+	""" Colorizes the B/W maxframe into red/blue image. Odd frames are colored red, even frames are colored blue.
+	"""
 
 	ff_maxframe = ff_bin.maxpixel
 	ff_avgframe = ff_bin.avepixel
@@ -1022,6 +1059,7 @@ def colorize_maxframe(ff_bin, minv = None, gamma = None, maxv = None):
 
 def adjust_levels(img_array, minv, gamma, maxv):
 	"""Adjusts levels on image with given parameters.
+
 	img_array: input image array
 	minv: minimum value of elements
 	gamma: gamma value
@@ -1047,7 +1085,8 @@ def adjust_levels(img_array, minv, gamma, maxv):
 	return img_array
 
 def cropDetectionSegments(ffBinRead, segmentList, cropSize = 64):
-	""" Crops small images around detections
+	""" Crops small images around detections.
+	
 	ffBinRead: read FF bin structure 
 	segmentList: list of coordinate tuples [(x1, y1), (x2, y2),...]
 	cropSize: image square size in pixels (e.g. 64x64 pixels)"""
