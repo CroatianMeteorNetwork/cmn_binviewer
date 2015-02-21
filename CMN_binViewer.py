@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.36
+version = 2.38
 
 import os
 import sys
@@ -49,6 +49,7 @@ from PIL import Image as img
 from PIL import ImageTk
 from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_dark, load_flat, process_array, saveImage, make_flat_frame, makeGIF, get_detection_only, get_processed_frames, adjust_levels, get_FTPdetect_coordinates, markDetections, deinterlace_array_odd, deinterlace_array_even
 from confirmationClass import Confirmation
+import module_exportLogsort as exportLogsort
 
 global_bg = "Black"
 global_fg = "Gray"
@@ -1415,8 +1416,13 @@ class BinViewer(Frame):
             start_frame = temp_img[1][0]  # Set start frame
             end_frame = temp_img[1][1]  # Set end frame
 
-            start_temp = start_frame-5
-            end_temp = end_frame+5
+            if self.data_type.get() == 1:
+                # Only on CAMS data type
+                start_temp = start_frame-5
+                end_temp = end_frame+5
+            else:
+                start_temp = start_frame
+                end_temp = end_frame
 
             start_temp = 0 if start_temp<0 else start_temp
             if self.data_type.get() == 1:
@@ -1425,6 +1431,7 @@ class BinViewer(Frame):
             else: 
                 # Skypatrol data dype
                 end_temp = 1500 if end_temp>1500 else end_temp
+                self.meteor_no = temp_img[1][2]
 
             self.start_frame.set(start_temp)
             self.end_frame.set(end_temp)
@@ -1444,7 +1451,7 @@ class BinViewer(Frame):
                 if (self.old_confirmation_image != self.current_image):
                     self.filter.set(1)
 
-                current_image, meteorNo = self.current_image.split()[0:2]
+                current_image, self.meteor_no = self.current_image.split()[0:2]
 
                 # Start confirmation video
                 if not self.filter.get() in (7, 10):
@@ -1473,7 +1480,7 @@ class BinViewer(Frame):
                         if not confirmation_video_root == None:
                             # Run confirmation video
                             confirmation_video_app = ConfirmationVideo(confirmation_video_root) 
-                            confirmation_video_app.update(img_path, current_image, int(meteorNo), self.ConfirmationInstance.FTPdetect_file_content, self.fps.get(), self.data_type)
+                            confirmation_video_app.update(img_path, current_image, int(self.meteor_no), self.ConfirmationInstance.FTPdetect_file_content, self.fps.get(), self.data_type)
 
                     if self.externalVideoOn.get():
 
@@ -1487,7 +1494,7 @@ class BinViewer(Frame):
                             external_video_app.update(img_path, current_image, self.start_frame.get(), self.end_frame.get(), self.fps.get(), self.data_type, dimensions)
 
                 self.old_confirmation_image = self.current_image
-            self.current_image, meteorNo = self.current_image.split()[0:2]
+            self.current_image, self.meteor_no = self.current_image.split()[0:2]
 
 
         img_path = self.dir_path+os.sep+self.current_image
@@ -1557,8 +1564,8 @@ class BinViewer(Frame):
             # In Confirmation mode plot detection points
             if self.mode.get() == 3:
                 # Prepare for plotting detections
-                ffBinName, meteorNo = self.confirmationListboxEntry.split()
-                detectionCoordinates = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content, ffBinName, int(meteorNo))[0]
+                ffBinName, self.meteor_no = self.confirmationListboxEntry.split()
+                detectionCoordinates = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content, ffBinName, int(self.meteor_no))[0]
 
                 img_array = markDetections(img_array, detectionCoordinates)
 
@@ -1942,14 +1949,14 @@ class BinViewer(Frame):
         self.status_bar.config(text = "Master flat frame done!")
         tkMessageBox.showinfo("Master flat frame", "Master flat frame done!")
 
-    def fireball_deinterlacing_process(self):
+    def fireball_deinterlacing_process(self, logsort_export=False, no_background=False):
         """ Process individual frames (from start frame to end frame) by applying calibartion and deinterlacing them field by field. Used for manual fireball processing. 
         """
 
         current_image = self.current_image
         if current_image == '':
             tkMessageBox.showerror("Image error", "No image selected! Saving aborted.")
-            return 0
+            return '', 0
 
         dark_frame = None
         flat_frame = None
@@ -1975,11 +1982,16 @@ class BinViewer(Frame):
 
         # Abort the process if no path is chosen
         if save_path == '':
-            return 0
+            return '', 0
 
-        get_processed_frames(self.dir_path+os.sep+current_image, save_path+os.sep, self.data_type.get(), flat_frame, flat_frame_scalar, dark_frame, self.start_frame.get(), self.end_frame.get())
+        image_list = get_processed_frames(self.dir_path+os.sep+current_image, save_path+os.sep, self.data_type.get(), flat_frame, flat_frame_scalar, dark_frame, self.start_frame.get(), self.end_frame.get(), logsort_export, no_background = no_background)
 
-        self.status_bar.config(text ="Processing done!")
+        if not logsort_export:
+            tkMessageBox.showinfo("Saving progress", "Saving done!")
+
+            self.status_bar.config(text ="Processing done!")
+
+        return save_path, image_list
 
 
     def make_gif(self):
@@ -2123,7 +2135,7 @@ class BinViewer(Frame):
 
         minimum_frames = int(self.minimum_frames.get())
 
-        def get_frames(frame_list):
+        def get_frames(frame_list, met_no):
             """Gets frames for given BMP file in LOGSORT.
             """
             # Times 2 because len(frames) actually contains every half-frame also
@@ -2132,14 +2144,14 @@ class BinViewer(Frame):
                 return None
             min_frame = int(float(frame_list[0]))
             max_frame = int(float(frame_list[-1]))
-            image_list[-1].append((min_frame, max_frame))
+            image_list[-1].append((min_frame, max_frame, met_no))
 
         def convert2str(ff_bin_list):
             """ Converts list format: [['FF*.bin', (start_frame, end_frame)], ... ] to string format ['FF*.bin Fr start_frame - end_frame']. 
             """
             str_ff_bin_list = []
             for line in ff_bin_list:
-                str_ff_bin_list.append(line[0]+" Fr "+str(line[1][0]).zfill(4)+" - "+str(line[1][1]).zfill(4))
+                str_ff_bin_list.append(line[0]+" Fr "+str(line[1][0]).zfill(4)+" - "+str(line[1][1]).zfill(4)+" meteorNo: "+str(line[1][2]).zfill(4))
 
             return str_ff_bin_list
 
@@ -2174,7 +2186,7 @@ class BinViewer(Frame):
 
             if not img_name in [image[0] for image in image_list] or old_met != met_no:
                 if first != True:
-                    get_frames(frame_list)
+                    get_frames(frame_list, met_no)
                 else:
                     first = False
 
@@ -2187,7 +2199,7 @@ class BinViewer(Frame):
                 
             frame_list.append(line[1])
 
-        get_frames(frame_list)
+        get_frames(frame_list, met_no)
 
         return image_list, convert2str(image_list)
 
@@ -2770,6 +2782,55 @@ class BinViewer(Frame):
 
         self.update_image(0)
 
+    def exportFireballData(self, no_background=False):
+        """ Export LOG_SORT.INF file from FTPdetectinfo for fireball analysis.
+
+        no_background: images will be built without background stars
+        """
+        if self.current_image == '':
+            return None
+
+        if (self.mode.get() == 3) or (self.mode.get() == 2 and self.data_type.get() == 2):
+            # Only in confirmation in CAMS and Detected in Skypatrol
+
+            save_path, image_list = self.fireball_deinterlacing_process(logsort_export = True, no_background = no_background)
+
+            if save_path == '':
+                return False
+
+            if exportLogsort.exportLogsort(self.dir_path+os.sep, save_path+os.sep, self.data_type.get(), self.current_image, self.meteor_no, self.start_frame.get(), self.end_frame.get(), self.fps.get(), image_list) == False:
+                tkMessageBox.showerror("Logsort export error", "Required files (FTPdetectinfo, CapturedStats or logfile.txt) were not found in the given folder!")
+        
+        else:
+            pass
+            # In detected or captured mode
+            # GENERIC LOGSORT!
+            generic_choice = tkMessageBox.askyesno("Generic LOG_SORT.INF", "Are you sure you want to create a generic LOG_SORT.INF file? \nSwitch to Confirmation mode for CAMS or Detected mode for Skypatrol to create a detection-based LOG_SORT.INF.")
+            if generic_choice == 'yes':
+                # Make generic
+                pass
+            return False
+
+        tkMessageBox.showinfo("Fireball data", "Exporting fireball data done!")
+        self.status_bar.config(text = "Exporting fireball data done!")
+
+        return True
+
+    def postprocessLogsort(self):
+        """ Fixes logsort after analysis with CMN_FBA.
+        """
+
+        logsort_path = tkFileDialog.askopenfilename(initialdir = self.dir_path, parent = self.parent, title = "Choose LOG_SORT.INF to postprocess", initialfile = "LOG_SORT.INF", defaultextension = ".INF", filetypes = [('INF files', '.inf')])
+
+        if logsort_path == '':
+            return False
+
+        if exportLogsort.postAnalysisFix(logsort_path, self.data_type.get()) == False:
+            tkMessageBox.showerror("LOG_SORT.INF error", "LOG_SORT.INF could not be opened or no CaptureStats file was found in folder! If you are working with Skypatrol data, try changing Data type to 'Skypatrol'.")
+        else:
+            tkMessageBox.showinfo("LOG_SORT.INF", "Postprocessing LOG_SORT.INF done!")
+
+
 
 
     def show_about(self):
@@ -2898,11 +2959,18 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.menuBar.add_cascade(label = "Confirmation", underline = 0, menu = self.confirmationMenu)
 
         # Process Menu
-        processMenu = Menu(self.menuBar, tearoff=0)      
+        processMenu = Menu(self.menuBar, tearoff = 0)
         processMenu.add_command(label = "Make master dark frame", command = self.make_master_dark)
         processMenu.add_command(label = "Make master flat frame", command = self.make_master_flat)
-        
         self.menuBar.add_cascade(label="Process", underline=0, menu=processMenu)
+
+        # Fireball menu
+        fireballMenu = Menu(self.menuBar, tearoff = 0)
+        fireballMenu.add_command(label = "Export detection with background stars", command = lambda: self.exportFireballData(no_background = False))
+        fireballMenu.add_command(label = "Export detection without background stars", command = lambda: self.exportFireballData(no_background = True))
+        fireballMenu.add_separator()
+        fireballMenu.add_command(label = "Postprocess LOG_SORT.INF", command = self.postprocessLogsort)
+        self.menuBar.add_cascade(label="Fireball", underline=0, menu=fireballMenu)
 
         # Layout menu
         layoutMenu = Menu(self.menuBar, tearoff = 0)
