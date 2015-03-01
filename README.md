@@ -12,15 +12,15 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 
 Latest Windows x86 build: https://dl.dropboxusercontent.com/u/7845267/HMM/CMN_binViewer_setup.exe
 
-To build from source you will need:
-- Python 2.7.8 or later
-- wxPython3.0 or later
-- scipy 0.14.0 or later
-- numpy 1.8.2 or later
-- PIL (Python Image Library) - Pillow-2.5.1 will do just fine
+To run or build from source you will need (take notice of the used versions):
+- Python 2.7.8 or later (also tested on 2.7.9)
+- wxPython 3.0.2.0
+- scipy 0.14.0 (this version is strongly recommended, I also tested on 0.15.0 but it requires some tinkering with DLLs on Windows)
+- numpy 1.8.2
+- PIL (Python Image Library) - Pillow-2.5.1
 
 To make a Windows exe:
-- cx_Freeze-4.3.2.win32-py2.7 or later
+- cx_Freeze-4.3.2.win32-py2.7
 
 Build scripts are provided: setup.py and COMPILE_from_setup.bat (Windows only). Making GIFs won't work on any other OS than Windows, as the software relies on gifsicle.exe to compress GIF animations.
 
