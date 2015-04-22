@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.38
+version = 2.39
 
 import os
 import sys
@@ -2387,7 +2387,7 @@ class BinViewer(Frame):
             if self.correct_datafile_name(image):
                 image_list.append(image)
                 continue
-            if ('FTPdetectinfo' in image) and ('.txt' in image):
+            if ('FTPdetectinfo' in image) and ('.txt' in image) and (not '_original' in image):
                 ftpDetectFile = image
 
         if ftpDetectFile == '':

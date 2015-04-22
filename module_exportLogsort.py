@@ -242,6 +242,7 @@ def _adjustLogsort(logsort_list, fps, start_frame, end_frame):
 
     else:
         # Too little frames for detection-based logsort, use the generic one!
+        print 'Too little frames for detection-based logsort, use the generic one!'
         return False
 
     time_difference = 1.0 / (fps * ((int(interlaced) + 1)))
