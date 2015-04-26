@@ -340,8 +340,8 @@ def _adjustLogsort(logsort_list, fps, start_frame, end_frame):
         extend_logsort_list = []
         for i, ext_frame in enumerate(frame_extend):
 
-            extend_time = _formatTime(first_time + (i+1) * time_difference)
-            julian_time = str(first_julian + (i+1) * julian_diff)
+            extend_time = _formatTime(last_time + (i+1) * time_difference)
+            julian_time = str(last_julian + (i+1) * julian_diff)
             extend_line = _formatLogsortLine(met_no, ext_frame, extend_time, julian_time)
             #fill_x += 1
             #fill_y += 1

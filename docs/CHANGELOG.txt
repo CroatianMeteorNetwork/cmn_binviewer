@@ -79,3 +79,6 @@ v2.38 - Feb. 21, 2015
 
 v2.39 - April 22, 2015
   - confirmation now chooses the real FTPdetectinfo, not the one with '_original' in its name
+
+v2.391 - April 26, 2015
+  - extending time from frame range in fireball logsort fixed
