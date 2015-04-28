@@ -82,3 +82,9 @@ v2.39 - April 22, 2015
 
 v2.391 - April 26, 2015
   - extending time from frame range in fireball logsort fixed
+
+v2.392 - April 28, 2015
+  - added edge markers in confirmation
+  - added notice of non-ascii character in the path
+  - optimization of detection point drawing during confirmation
+  - external video placement is now not overlapping with the image

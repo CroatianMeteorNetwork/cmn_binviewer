@@ -915,7 +915,7 @@ def get_FTPdetect_coordinates(FTPdetect_file_content, ff_bin, meteor_no = 1):
 
     return coord_list, angle
 
-def markDetections(imageArray, detectionsArray):
+def markDetections(imageArray, detectionsArray, edgeMarker=True):
     """ Takes an B/W 8-bit image and marks detections by pixel coordinates in detectionsArray. Returns a RGB array. 
     """
 
@@ -923,12 +923,26 @@ def markDetections(imageArray, detectionsArray):
     greenImage = np.copy(imageArray)
     blueImage = np.copy(imageArray)
     
+    # Extract position of each point
+    frames, y, x = zip(*detectionsArray)
 
-    for detection in detectionsArray:
-        frame, y, x = detection
-        redImage[x][y] = 0
-        greenImage[x][y] = 255
-        blueImage[x][y] = 0
+    # Change each given point to green
+    redImage[x, y] = 0
+    greenImage[x, y] = 255
+    blueImage[x, y] = 0
+
+    if edgeMarker:
+        # Mark point range on the edge of the image
+        x_range = range(min(x), max(x)+1)
+        y_range = range(min(y), max(y)+1)
+
+        x_edge = len(y_range) * [0] + x_range
+        y_edge = y_range + len(x_range) * [0]
+
+        redImage[x_edge, y_edge] = 255
+        greenImage[x_edge, y_edge] = 0
+        blueImage[x_edge, y_edge] = 0
+
         
 
     return np.dstack((redImage, greenImage, blueImage))

@@ -35,7 +35,11 @@ class Confirmation:
 
         self.img_list = img_list
         self.FTP_detect_file = FTP_detect_file
+
+        # Load FTPdetectinfo file
         self.FTPdetect_file_content = open(self.FTP_detect_file).readlines()
+        self.FTPdetect_file_content = self.removeLastSeparator(self.FTPdetect_file_content)
+
         self.confirmationDirectory = confirmationDirectory
 
         # Check if all *.bin images in the folder correspond to the images in FTPdetectinfo file
@@ -51,6 +55,15 @@ class Confirmation:
             if FF_bin_file[0] in self.img_list:
                 entry = FF_bin_file[0]+' '+FF_bin_file[1][0]
                 self.img_dict[entry] = [' X ', FF_bin_file[1][1], FF_bin_file[1][2]]
+
+    def removeLastSeparator(self, FTPdetect_file_content):
+        """ Removes last separator in the FTPdetectinfo file, as it may interfere with normal operation. """
+
+        if len(FTPdetect_file_content) > 1:
+            if '----------' in FTPdetect_file_content[-1]:
+                FTPdetect_file_content.pop()
+
+        return FTPdetect_file_content
 
     def getMeteorList(self):
         """ Returns the dictionary of meteors with their current status. 

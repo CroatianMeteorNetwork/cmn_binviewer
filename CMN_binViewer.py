@@ -24,9 +24,10 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.391
+version = 2.392
 
 import os
+import io
 import sys
 import errno
 import gc
@@ -354,7 +355,7 @@ class ConfirmationVideo(Frame):
          
         self.parent = parent
 
-        self.parent.title("Confirmation video")
+        self.parent.title("Detection centered video")
 
         # Video label
         blankImage = None
@@ -608,7 +609,7 @@ class BinViewer(Frame):
         self.layout_vertical = BooleanVar()  # Layout variable
 
         # Read configuration file
-        orientation, fps_config, self.dir_path, external_video_config = self.readConfig()
+        orientation, fps_config, self.dir_path, external_video_config, edge_marker = self.readConfig()
 
         if orientation == 0:
             self.layout_vertical.set(False)
@@ -632,6 +633,7 @@ class BinViewer(Frame):
         self.old_filter = IntVar()
         self.img_data = 0
         self.current_image = ''
+        self.current_image_cols = 768
         self.old_image = ''
         self.old_confirmation_image = ''
         self.img_name_type = 'maxpixel'
@@ -682,6 +684,9 @@ class BinViewer(Frame):
 
         self.externalVideoOn = IntVar()
         self.externalVideoOn.set(external_video_config)
+
+        self.edge_marker = IntVar()
+        self.edge_marker.set(edge_marker)
 
         # GIF
         self.gif_embed = BooleanVar()
@@ -812,11 +817,12 @@ class BinViewer(Frame):
         fps = 25
         dir_path = self.dir_path
         external_video = 0
+        edge_marker = 1
 
         read_list = (orientation, fps)
 
         try:
-            config_lines = open(config_file).readlines()
+            config_lines = open(config_file, 'r').readlines()
         except:
             tkMessageBox.showerror("Configuration file "+config_file+" not found! Program files are compromised!")
             return read_list
@@ -838,7 +844,10 @@ class BinViewer(Frame):
             if 'external_video' in line[0]:
                 external_video = int(line[1])
 
-        read_list = (orientation, fps, dir_path, external_video)
+            if 'edge_marker' in line[0]:
+                edge_marker = int(line[1])
+
+        read_list = (orientation, fps, dir_path, external_video, edge_marker)
 
         return read_list
 
@@ -848,6 +857,7 @@ class BinViewer(Frame):
         orientation = int(self.layout_vertical.get())
         fps = int(self.fps.get())
         external_video = int(self.externalVideoOn.get())
+        edge_marker = int(self.edge_marker.get())
 
         if not fps in (25, 30):
             fps = 25
@@ -872,8 +882,16 @@ class BinViewer(Frame):
 
             temp_path = (os.sep).join(new_path)
 
-            new_config.write("dir_path = "+temp_path.strip()+"\n")
-            new_config.write("external_video = "+str(external_video)+"\n")
+            # Write config parameters to config.ini, but check for non-ascii characters in the directory path
+            try:
+                new_config.write("dir_path = "+temp_path.strip()+"\n")
+                new_config.write("external_video = "+str(external_video)+"\n")
+                new_config.write("edge_marker = "+str(edge_marker)+"\n")
+            except:
+                # Non ascii - characters found
+                tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
+                sys.exit()
+                new_config.close()
         
         return True
 
@@ -1567,7 +1585,7 @@ class BinViewer(Frame):
                 ffBinName, self.meteor_no = self.confirmationListboxEntry.split()
                 detectionCoordinates = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content, ffBinName, int(self.meteor_no))[0]
 
-                img_array = markDetections(img_array, detectionCoordinates)
+                img_array = markDetections(img_array, detectionCoordinates, self.edge_marker.get())
 
         elif self.filter.get() == 2:  # Colorized
             
@@ -1703,6 +1721,9 @@ class BinViewer(Frame):
 
 
         updateImageLock.acquire()
+
+        self.current_image_cols = len(img_array[0])
+
         self.img_data = img_array
         temp_image = ImageTk.PhotoImage(img.fromarray(img_array).convert("RGB")) #Prepare for showing
 
@@ -2087,7 +2108,7 @@ class BinViewer(Frame):
             return False
         ftpdetect_file = ftpdetect_file[0]
         try:
-            FTPdetect_file_content = open(self.dir_path+os.sep+ftpdetect_file).readlines()
+            FTPdetect_file_content = open(self.dir_path+os.sep+ftpdetect_file, 'r').readlines()
         except:
             tkMessageBox.showerror("File error", "Could not open file: "+ftpdetect_file)
             return False
@@ -2161,7 +2182,7 @@ class BinViewer(Frame):
             tkMessageBox.showerror("LOG_SORT.INF error", "LOG_SORT.INF file not found!")
 
         try:
-            logsort_contents = open(logsort_path).readlines()
+            logsort_contents = open(logsort_path, 'r').readlines()
         except:
             tkMessageBox.showerror("File error", "Could not open file: "+logsort_path)
             return False
@@ -2405,11 +2426,11 @@ class BinViewer(Frame):
 
             # Start confirmation video
             if self.externalVideoOn.get() == 0:
-                confirmationVideoInitialize()
+                confirmationVideoInitialize(self.current_image_cols)
 
             # Start external video
             if self.externalVideoOn.get():
-                externalVideoInitialize()
+                externalVideoInitialize(self.current_image_cols)
 
             self.mode.set(3)
             self.change_mode()
@@ -2444,7 +2465,8 @@ class BinViewer(Frame):
             self.confirmationMenu.entryconfig("End", state = "normal")
 
             # Disable confirmation video options
-            self.confirmationMenu.entryconfig("Confirmation video", state = "disabled")
+            self.confirmationMenu.entryconfig("Edge markers", state = "disabled")
+            self.confirmationMenu.entryconfig("Detection centered video", state = "disabled")
             self.confirmationMenu.entryconfig("External video - 1:1 size", state = "disabled")
             self.confirmationMenu.entryconfig("External video - 1:1.5 size", state = "disabled")
             self.confirmationMenu.entryconfig("External video - 1:2 size", state = "disabled")
@@ -2710,8 +2732,8 @@ class BinViewer(Frame):
 
             ftpDetectFile = ''
             for dir_file in dir_contents:
-                if 'FTPdetectinfo' in dir_file:
-                    copy2(self.dir_path+os.sep+dir_file, self.ConfirmationInstance.confirmationDirectory+os.sep+"".join(dir_file.split('.')[:-1])+'_ORIGINAL.txt')
+                if 'FTPdetectinfo' in dir_file and (not '_original' in dir_file):
+                    copy2(self.dir_path+os.sep+dir_file, self.ConfirmationInstance.confirmationDirectory+os.sep+"".join(dir_file.split('.')[:-1])+'_pre-confirmation.txt')
                     ftpDetectFile = dir_file
                     continue
                 elif ('.txt' in dir_file) or ('.inf' in dir_file) or ('.rpt' in dir_file) or ('.log' in dir_file) or ('.hmm' in dir_file) or ('.cal' in dir_file):
@@ -2769,7 +2791,8 @@ class BinViewer(Frame):
         self.confirmationMenu.entryconfig("Start", state = "normal")
         self.confirmationMenu.entryconfig("End", state = "disabled")
 
-        self.confirmationMenu.entryconfig("Confirmation video", state = "normal")
+        self.confirmationMenu.entryconfig("Edge markers", state = "normal")
+        self.confirmationMenu.entryconfig("Detection centered video", state = "normal")
         self.confirmationMenu.entryconfig("External video - 1:1 size", state = "normal")
         self.confirmationMenu.entryconfig("External video - 1:1.5 size", state = "normal")
         self.confirmationMenu.entryconfig("External video - 1:2 size", state = "normal")
@@ -2951,7 +2974,9 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.confirmationMenu.add_command(label = "End", underline = 0, command = self.confirmationEnd)
         self.confirmationMenu.entryconfig("End", state = "disabled")
         self.confirmationMenu.add_separator()
-        self.confirmationMenu.add_checkbutton(label = "Confirmation video", onvalue = 0, variable = self.externalVideoOn, command = self.update_layout)
+        self.confirmationMenu.add_checkbutton(label = "Edge markers", onvalue = 1, variable = self.edge_marker, command = self.update_layout)
+        self.confirmationMenu.add_separator()
+        self.confirmationMenu.add_checkbutton(label = "Detection centered video", onvalue = 0, variable = self.externalVideoOn, command = self.update_layout)
         self.confirmationMenu.add_checkbutton(label = "External video - 1:1 size", onvalue = 1, variable = self.externalVideoOn, command = self.update_layout)
         self.confirmationMenu.add_checkbutton(label = "External video - 1:1.5 size", onvalue = 2, variable = self.externalVideoOn, command = self.update_layout)
         self.confirmationMenu.add_checkbutton(label = "External video - 1:2 size", onvalue = 3, variable = self.externalVideoOn, command = self.update_layout)
@@ -3265,7 +3290,7 @@ external_video_app = None
 external_video_root = None
 stop_external_video = False
 
-def confirmationVideoInitialize():
+def confirmationVideoInitialize(img_cols):
     """ Initializes the Confirmation video window. 
     """
 
@@ -3273,12 +3298,15 @@ def confirmationVideoInitialize():
     
     confirmation_video_root = tk.Toplevel()
     confirmation_video_root.wm_attributes("-topmost", 1)  # Always on top
-    #confirmation_video_root.geometry('+0+0')
-    confirmation_video_root.geometry('+1085+130')
+
+    # Set position of the external window
+    img_cols = str(int(770 + 0.92*img_cols/2))
+    confirmation_video_root.geometry('+'+img_cols+'+130')
+
     confirmation_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None) # Override close button to do nothing
     confirmation_video_root.attributes("-toolwindow", 1)  # Remove minimize and maximize buttons
 
-def externalVideoInitialize():
+def externalVideoInitialize(img_cols):
     """ Initializes the External video window. 
     """
 
@@ -3286,8 +3314,11 @@ def externalVideoInitialize():
     
     external_video_root = tk.Toplevel()
     external_video_root.wm_attributes("-topmost", 1)  # Always on top
-    #external_video_root.geometry('+256+0')
-    external_video_root.geometry('+1085+130')
+
+    # Set position of the external window
+    img_cols = str(int(770 + 0.92*img_cols/2))
+    external_video_root.geometry('+'+img_cols+'+130')
+
     external_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None) # Override close button to do nothing
     external_video_root.attributes("-toolwindow", 1)  # Remove minimize and maximize buttons
 
