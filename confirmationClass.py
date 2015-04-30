@@ -199,6 +199,10 @@ class Confirmation:
             
             frame_list.append(line.split()[0])
 
+        # Check if there are no detections
+        if len(frame_list) == 0:
+            return []
+
         get_frames(frame_list, met_no)  # Writing the last FF bin file frames in a list
 
         return ff_bin_list

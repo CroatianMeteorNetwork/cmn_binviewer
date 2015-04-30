@@ -88,3 +88,6 @@ v2.392 - April 28, 2015
   - added notice of non-ascii character in the path
   - optimization of detection point drawing during confirmation
   - external video placement is now not overlapping with the image
+
+v2.393 - April 30, 2015
+  - fixed crash when opening confirmation and detection mode and there are no detections in the FTPdetectinfo file

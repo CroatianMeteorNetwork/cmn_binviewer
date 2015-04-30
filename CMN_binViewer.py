@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.392
+version = 2.393
 
 import os
 import io
@@ -2142,6 +2142,10 @@ class BinViewer(Frame):
             
             frame_list.append(line.split()[0])
 
+        # Check if there are no detections
+        if len(frame_list) == 0:
+            return [], []
+
         # Writing the last FF bin file frames in a list
         if not '----' in frame_list[-1]:
             get_frames(frame_list) 
@@ -2417,6 +2421,12 @@ class BinViewer(Frame):
             return 0
 
         self.ConfirmationInstance = Confirmation(image_list, self.dir_path+os.sep+ftpDetectFile, confirmationDirectory, minimum_frames = 0)
+
+        # Cancel the confirmation if there are no detectins in the FTPdetectinfo file
+        if len(self.ConfirmationInstance.img_dict) == 0:
+            tkMessageBox.showinfo("FTPdetectinfo error", "There are no detections in the FTPdetectinfo file!")
+            self.confirmationFinish()
+            return 0
 
         if tkMessageBox.askyesno("Confirmation", "Confirmation key bindings:\n  Enter - confirm\n  Delete - reject\n  Page Up - jump to previous image\n  Page Down - jump to next image\n\nThere are "+str(len(self.ConfirmationInstance.getImageList(0)))+" images to be confirmed, do you want to proceed?"):
 
