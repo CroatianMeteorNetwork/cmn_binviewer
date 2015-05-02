@@ -866,12 +866,13 @@ def get_FTPdetect_coordinates(FTPdetect_file_content, ff_bin, meteor_no = 1):
     """
 
     if int(FTPdetect_file_content[0].split('=')[1]) == 0: #Solving issue when no meteors are in the file
-        return []
+        return [], 0, 0
 
     skip = 0
     skip_to_end = False
     coord_list = []
-    angle = None
+    HT_rho = 0
+    HT_phi = 0
 
     found_bin = False
     found_meteor = False
@@ -903,7 +904,8 @@ def get_FTPdetect_coordinates(FTPdetect_file_content, ff_bin, meteor_no = 1):
 
         if found_bin and found_meteor:
             if read_angle == False:
-                angle = float(line[-1])
+                HT_phi = float(line[-1])
+                HT_rho = float(line[-2])
                 read_angle = True
                 continue
 
@@ -913,7 +915,7 @@ def get_FTPdetect_coordinates(FTPdetect_file_content, ff_bin, meteor_no = 1):
             line = line.split()
             coord_list.append((float(line[0]), int(round(float(line[1]), 0)), int(round(float(line[2]), 0))))
 
-    return coord_list, angle
+    return (coord_list, HT_rho, HT_phi)
 
 def markDetections(imageArray, detectionsArray, edgeMarker=True):
     """ Takes an B/W 8-bit image and marks detections by pixel coordinates in detectionsArray. Returns a RGB array. 

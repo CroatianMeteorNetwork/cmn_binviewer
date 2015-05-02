@@ -91,3 +91,7 @@ v2.392 - April 28, 2015
 
 v2.393 - April 30, 2015
   - fixed crash when opening confirmation and detection mode and there are no detections in the FTPdetectinfo file
+
+v2.4 - May 2, 2015
+  - added level adjustment to the External video during confirmation
+  - added drawing parallel lines with detection in External video

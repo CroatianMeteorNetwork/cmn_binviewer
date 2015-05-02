@@ -152,13 +152,13 @@ class Confirmation:
         """ Returns a list of FF*.bin files with coresponding frames for a detected meteor in format [["FF*bin", (start_frame, end_frame)]]. 
         """
 
-        def get_frames(frame_list, met_no):
+        def get_frames(frame_list, met_no, HT_rho, HT_phi):
             if len(frame_list)<minimum_frames*2:  # Times 2 because len(frames) actually contains every half-frame also
                 ff_bin_list.pop()
                 return None
             min_frame = int(float(frame_list[0]))
             max_frame = int(float(frame_list[-1]))
-            ff_bin_list[-1].append((met_no, min_frame, max_frame))
+            ff_bin_list[-1].append((met_no, min_frame, max_frame, HT_rho, HT_phi))
 
             #print len(frame_list)
 
@@ -175,7 +175,7 @@ class Confirmation:
             #print line
 
             if ("-------------------------------------------------------" in line):
-                get_frames(frame_list, met_no)
+                get_frames(frame_list, met_no, HT_rho, HT_phi)
                 
 
             if skip>0:
@@ -184,6 +184,7 @@ class Confirmation:
 
             line = line.replace('\n', '')
 
+            # Read the line with FF_bin name
             if ("FF" in line) and (".bin" in line):
                 ff_bin_list.append([line.strip()])
                 skip = 1
@@ -192,8 +193,12 @@ class Confirmation:
                 frame_list = []
                 continue
 
+            # Read meteor info from the second event line
             if met_no_flag == True:
-                met_no = line.split()[1]
+                line = line.split()
+                met_no = line[1]
+                HT_rho = line[8]
+                HT_phi = line[9]
                 met_no_flag = False
                 continue
             
@@ -203,7 +208,7 @@ class Confirmation:
         if len(frame_list) == 0:
             return []
 
-        get_frames(frame_list, met_no)  # Writing the last FF bin file frames in a list
+        get_frames(frame_list, met_no, HT_rho, HT_phi)  # Writing the last FF bin file frames in a list
 
         return ff_bin_list
 

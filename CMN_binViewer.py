@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.393
+version = 2.4
 
 import os
 import io
@@ -49,8 +49,9 @@ from ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
 from PIL import Image as img
 from PIL import ImageTk
 from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_dark, load_flat, process_array, saveImage, make_flat_frame, makeGIF, get_detection_only, get_processed_frames, adjust_levels, get_FTPdetect_coordinates, markDetections, deinterlace_array_odd, deinterlace_array_even
-from confirmationClass import Confirmation
+from module_confirmationClass import Confirmation
 import module_exportLogsort as exportLogsort
+from module_highlightMeteorPath import highlightMeteorPath
 
 global_bg = "Black"
 global_fg = "Gray"
@@ -227,7 +228,8 @@ class ExternalVideo(Frame):
         self.externalVideoLabel.image = blankImage
         self.externalVideoLabel.grid(row = 1, column = 1)
 
-    def update(self, img_path, current_image, start_frame, end_frame, fps, data_type, dimensions = 1):
+    def update(self, img_path, current_image, start_frame, end_frame, fps, data_type, dimensions=1, min_lvl=0,
+                gamma=1, max_lvl=255, external_guidelines=0, HT_rho=0, HT_phi=0):
         """ Updates external video parameters on image change and runs the video.
         """
         self.img_path = img_path
@@ -235,6 +237,18 @@ class ExternalVideo(Frame):
         self.dimensions = dimensions
 
         self.external_video_FFbinRead = readFF(img_path, datatype = data_type)
+
+        # Apply levels and gamma
+        self.external_video_FFbinRead.maxpixel = adjust_levels(self.external_video_FFbinRead.maxpixel, 
+                                                                min_lvl, gamma, max_lvl)
+
+        self.external_video_FFbinRead.avepixel = adjust_levels(self.external_video_FFbinRead.avepixel, 
+                                                                min_lvl, gamma, max_lvl)
+
+        if external_guidelines:
+            # Draw meteor guidelines
+            self.external_video_FFbinRead.avepixel = highlightMeteorPath(self.external_video_FFbinRead.avepixel, 
+                                                                            HT_rho, HT_phi)
 
         self.external_video_ncols = self.external_video_FFbinRead.ncols[0] - 1
         self.external_video_nrows = self.external_video_FFbinRead.nrows[0] - 1
@@ -609,7 +623,7 @@ class BinViewer(Frame):
         self.layout_vertical = BooleanVar()  # Layout variable
 
         # Read configuration file
-        orientation, fps_config, self.dir_path, external_video_config, edge_marker = self.readConfig()
+        orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines = self.readConfig()
 
         if orientation == 0:
             self.layout_vertical.set(False)
@@ -685,8 +699,14 @@ class BinViewer(Frame):
         self.externalVideoOn = IntVar()
         self.externalVideoOn.set(external_video_config)
 
+        self.HT_rho = 0
+        self.HT_phi = 0
+
         self.edge_marker = IntVar()
         self.edge_marker.set(edge_marker)
+
+        self.external_guidelines = IntVar()
+        self.external_guidelines.set(external_guidelines)
 
         # GIF
         self.gif_embed = BooleanVar()
@@ -818,6 +838,7 @@ class BinViewer(Frame):
         dir_path = self.dir_path
         external_video = 0
         edge_marker = 1
+        external_guidelines = 1
 
         read_list = (orientation, fps)
 
@@ -847,7 +868,12 @@ class BinViewer(Frame):
             if 'edge_marker' in line[0]:
                 edge_marker = int(line[1])
 
-        read_list = (orientation, fps, dir_path, external_video, edge_marker)
+            if 'external_guidelines' in line[0]:
+                external_guidelines = int(line[1])
+
+                
+
+        read_list = (orientation, fps, dir_path, external_video, edge_marker, external_guidelines)
 
         return read_list
 
@@ -858,6 +884,7 @@ class BinViewer(Frame):
         fps = int(self.fps.get())
         external_video = int(self.externalVideoOn.get())
         edge_marker = int(self.edge_marker.get())
+        external_guidelines = int(self.external_guidelines.get())
 
         if not fps in (25, 30):
             fps = 25
@@ -887,6 +914,7 @@ class BinViewer(Frame):
                 new_config.write("dir_path = "+temp_path.strip()+"\n")
                 new_config.write("external_video = "+str(external_video)+"\n")
                 new_config.write("edge_marker = "+str(edge_marker)+"\n")
+                new_config.write("external_guidelines = "+str(external_guidelines)+"\n")
             except:
                 # Non ascii - characters found
                 tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
@@ -1459,6 +1487,11 @@ class BinViewer(Frame):
             self.confirmationListboxEntry = " ".join(self.current_image.split()[0:2])
             temp_info = self.confirmationDict[self.confirmationListboxEntry]
 
+
+            # Prepare for plotting detections
+            ffBinName, self.meteor_no = self.confirmationListboxEntry.split()
+            detectionCoordinates, self.HT_rho, self.HT_phi = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content, ffBinName, int(self.meteor_no))
+
             # Change to Maxpixel filter after each image change
             if (self.old_confirmation_image != self.current_image) or (self.old_filter.get() in (7, 10)):
                 stop_confirmation_video = True
@@ -1498,18 +1531,32 @@ class BinViewer(Frame):
                         if not confirmation_video_root == None:
                             # Run confirmation video
                             confirmation_video_app = ConfirmationVideo(confirmation_video_root) 
-                            confirmation_video_app.update(img_path, current_image, int(self.meteor_no), self.ConfirmationInstance.FTPdetect_file_content, self.fps.get(), self.data_type)
+                            confirmation_video_app.update(img_path, current_image, int(self.meteor_no), 
+                                                            self.ConfirmationInstance.FTPdetect_file_content, 
+                                                            self.fps.get(), self.data_type)
 
                     if self.externalVideoOn.get():
 
                         stop_external_video = False
 
                         if not external_video_root == None:
+
+                            # Read levels and gamma values
+                            minv_temp = self.min_lvl_scale.get()
+                            gamma_temp = self.gamma.get()
+                            maxv_temp = self.max_lvl_scale.get()
+
                             # 1 - full size, 2 - half size, 3 - quarter size
                             dimensions = self.externalVideoOn.get()
+
                             # Run external video
                             external_video_app = ExternalVideo(external_video_root) 
-                            external_video_app.update(img_path, current_image, self.start_frame.get(), self.end_frame.get(), self.fps.get(), self.data_type, dimensions)
+                            external_video_app.update(img_path, current_image, self.start_frame.get(), 
+                                                        self.end_frame.get(), self.fps.get(), self.data_type, 
+                                                        dimensions, min_lvl = minv_temp, gamma = gamma_temp,
+                                                        max_lvl = maxv_temp, 
+                                                        external_guidelines=self.external_guidelines.get(), 
+                                                        HT_rho = self.HT_rho, HT_phi = self.HT_phi)
 
                 self.old_confirmation_image = self.current_image
             self.current_image, self.meteor_no = self.current_image.split()[0:2]
@@ -1581,10 +1628,8 @@ class BinViewer(Frame):
 
             # In Confirmation mode plot detection points
             if self.mode.get() == 3:
-                # Prepare for plotting detections
-                ffBinName, self.meteor_no = self.confirmationListboxEntry.split()
-                detectionCoordinates = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content, ffBinName, int(self.meteor_no))[0]
 
+                # Mark detection points on the image
                 img_array = markDetections(img_array, detectionCoordinates, self.edge_marker.get())
 
         elif self.filter.get() == 2:  # Colorized
@@ -2430,6 +2475,13 @@ class BinViewer(Frame):
 
         if tkMessageBox.askyesno("Confirmation", "Confirmation key bindings:\n  Enter - confirm\n  Delete - reject\n  Page Up - jump to previous image\n  Page Down - jump to next image\n\nThere are "+str(len(self.ConfirmationInstance.getImageList(0)))+" images to be confirmed, do you want to proceed?"):
 
+            # Set gamma a bit higher and turn on deinterlace
+            self.hold_levels.set(True)
+            # Set gamma to about 1.3, so the meteors are visible better
+            self.gamma_scale.set(-0.12)
+            self.gamma.set(1.32)
+            self.deinterlace.set(True)
+
             # Disable mode buttons during confirmation
             self.captured_btn.config(state = DISABLED)
             self.detected_btn.config(state = DISABLED)
@@ -2476,17 +2528,12 @@ class BinViewer(Frame):
 
             # Disable confirmation video options
             self.confirmationMenu.entryconfig("Edge markers", state = "disabled")
+            self.confirmationMenu.entryconfig("Meteor guidelines (external video)", state = "disabled")
             self.confirmationMenu.entryconfig("Detection centered video", state = "disabled")
             self.confirmationMenu.entryconfig("External video - 1:1 size", state = "disabled")
             self.confirmationMenu.entryconfig("External video - 1:1.5 size", state = "disabled")
             self.confirmationMenu.entryconfig("External video - 1:2 size", state = "disabled")
             self.confirmationMenu.entryconfig("External video - 1:4 size", state = "disabled")
-
-            # Set gamma a bit higher and turn of deinterlace
-            self.hold_levels.set(True)
-            # Set gamma to about 1.3, so the meteors are better visible
-            self.gamma_scale.set(-0.12)
-            self.deinterlace.set(True)
 
             self.update_layout()
 
@@ -2802,6 +2849,7 @@ class BinViewer(Frame):
         self.confirmationMenu.entryconfig("End", state = "disabled")
 
         self.confirmationMenu.entryconfig("Edge markers", state = "normal")
+        self.confirmationMenu.entryconfig("Meteor guidelines (external video)", state = "normal")
         self.confirmationMenu.entryconfig("Detection centered video", state = "normal")
         self.confirmationMenu.entryconfig("External video - 1:1 size", state = "normal")
         self.confirmationMenu.entryconfig("External video - 1:1.5 size", state = "normal")
@@ -2985,6 +3033,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.confirmationMenu.entryconfig("End", state = "disabled")
         self.confirmationMenu.add_separator()
         self.confirmationMenu.add_checkbutton(label = "Edge markers", onvalue = 1, variable = self.edge_marker, command = self.update_layout)
+        self.confirmationMenu.add_checkbutton(label = "Meteor guidelines (external video)", onvalue = 1, variable = self.external_guidelines, command = self.update_layout)
         self.confirmationMenu.add_separator()
         self.confirmationMenu.add_checkbutton(label = "Detection centered video", onvalue = 0, variable = self.externalVideoOn, command = self.update_layout)
         self.confirmationMenu.add_checkbutton(label = "External video - 1:1 size", onvalue = 1, variable = self.externalVideoOn, command = self.update_layout)
