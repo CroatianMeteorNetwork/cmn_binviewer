@@ -917,29 +917,67 @@ def get_FTPdetect_coordinates(FTPdetect_file_content, ff_bin, meteor_no = 1):
 
     return (coord_list, HT_rho, HT_phi)
 
-def markDetections(imageArray, detectionsArray, edgeMarker=True):
-    """ Takes an B/W 8-bit image and marks detections by pixel coordinates in detectionsArray. Returns a RGB array. 
+def markDetections(image_array, detections_array, edge_marker=True, edge_thickness=2, edge_minimum=36):
+    """ Takes an B/W 8-bit image and marks detections by pixel coordinates in detections_array. Returns a RGB array. 
+
+    image_array: numpy array containing the image
+    detections_array: list of detections (frame, x, y)
+    edge_marker: marks the detection on the edge of an image if True with red
+    edge_thickness: edge marker thickness in pixels
+    edge_minimum: minimum edge width in pixels
     """
 
-    redImage = np.copy(imageArray)
-    greenImage = np.copy(imageArray)
-    blueImage = np.copy(imageArray)
+    def minimumEdge(var_min, var_max, img_var_size, edge_minimum):
+        """ Check for minimum edge width. """
+        if var_min > var_max:
+            var_min, var_max = var_max, var_min
+
+        if abs(var_max - var_min) < edge_minimum:
+            var_diff = int ((edge_minimum - abs(var_max - var_min)) /2 )
+            var_max += var_diff
+
+            var_min -= var_diff
+
+        if var_max >= img_var_size:
+                var_max = img_var_size - 1
+
+        if var_min < 0:
+                var_min = 0
+
+        return var_min, var_max
+
+
+    redImage = np.copy(image_array)
+    greenImage = np.copy(image_array)
+    blueImage = np.copy(image_array)
     
     # Extract position of each point
-    frames, y, x = zip(*detectionsArray)
+    frames, y, x = zip(*detections_array)
 
     # Change each given point to green
     redImage[x, y] = 0
     greenImage[x, y] = 255
     blueImage[x, y] = 0
 
-    if edgeMarker:
+    if edge_marker:
         # Mark point range on the edge of the image
-        x_range = range(min(x), max(x)+1)
-        y_range = range(min(y), max(y)+1)
 
-        x_edge = len(y_range) * [0] + x_range
-        y_edge = y_range + len(x_range) * [0]
+        img_x_size = len(image_array)
+        img_y_size = len(image_array[0])
+
+        # Find the range of edge pixels to draw
+        x_min, x_max = minimumEdge (min(x), max(x)+1, img_x_size, edge_minimum)
+        y_min, y_max = minimumEdge (min(y), max(y)+1, img_y_size, edge_minimum)
+
+        x_range = range(x_min, x_max)
+        y_range = range(y_min, y_max)
+
+        x_edge = []
+        y_edge = []
+
+        for border_px in range(0, edge_thickness):
+            x_edge += len(y_range) * [border_px] + x_range
+            y_edge += y_range + len(x_range) * [border_px]
 
         redImage[x_edge, y_edge] = 255
         greenImage[x_edge, y_edge] = 0

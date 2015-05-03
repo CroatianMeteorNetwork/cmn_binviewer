@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.4
+version = 2.41
 
 import os
 import io
@@ -52,6 +52,11 @@ from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_da
 from module_confirmationClass import Confirmation
 import module_exportLogsort as exportLogsort
 from module_highlightMeteorPath import highlightMeteorPath
+
+# Disable video
+# Video inside the GUI is very prone to crashes due to TkInter being not thread-safe. Thus it is better to
+# leave the video disabled
+disable_UI_video = True
 
 global_bg = "Black"
 global_fg = "Gray"
@@ -127,33 +132,36 @@ class ConstrainedEntry(StyledEntry):
 
         return True
 
+
 class Video(threading.Thread): 
         """ Class for handling video showing in another thread.
         """
         def __init__(self, viewer_class, img_path):
-            self.videoLock = threading.RLock()
-            self.videoLock.acquire()
+            
             super(Video, self).__init__()
             # Set main binViewer class to be callable inside Video class
             self.viewer_class = viewer_class
             self.img_path = img_path
-            self.videoLock.release()
+            self.fps = self.viewer_class.fps.get()
+
+            self.temp_frame = self.viewer_class.temp_frame.get()
+            self.end_frame = self.viewer_class.end_frame.get()
+            self.start_frame = self.viewer_class.start_frame.get()
+
+            self.data_type = self.viewer_class.data_type.get()
+            
 
         def run(self):
-            
-            self.videoLock.acquire()
 
-            temp_frame = self.viewer_class.temp_frame.get()
-            end_frame = self.viewer_class.end_frame.get()
-            start_frame = self.viewer_class.start_frame.get()
-
-            starting_image = self.viewer_class.current_image
+            temp_frame = self.temp_frame
+            start_frame = self.start_frame
+            end_frame = self.end_frame
 
             video_cache = []  # Storing the fist run of reading from file to an array
 
-            ff_bin_read = readFF(self.img_path, datatype = self.viewer_class.data_type.get())
+            ff_bin_read = readFF(self.img_path, datatype = self.data_type)
 
-            self.videoLock.release()
+            
 
             # Cache everything under 75 frames
             if (end_frame - start_frame + 1) <= 75:
@@ -167,7 +175,7 @@ class Video(threading.Thread):
                 start_time = time.clock()  # Time the script below to achieve correct FPS
 
                 if temp_frame>=end_frame:
-                    self.viewer_class.temp_frame.set(start_frame)
+                    self.temp_frame = start_frame
                     temp_frame = start_frame
                 else:
                     temp_frame += 1
@@ -187,11 +195,9 @@ class Video(threading.Thread):
                 
                 self.viewer_class.img_data = img_array
 
-                self.videoLock.acquire()
                 temp_image = ImageTk.PhotoImage(img.fromarray(img_array)) #Prepare for showing
                 self.viewer_class.imagelabel.configure(image = temp_image) #Set image to image label
                 self.viewer_class.imagelabel.image = temp_image
-                self.videoLock.release()
 
                 # Set timestamp
                 self.viewer_class.set_timestamp(temp_frame, image_name = self.img_path.split(os.sep)[-1])
@@ -201,8 +207,8 @@ class Video(threading.Thread):
 
                 script_time = float(end_time - start_time)
                 # Don't run sleep if the script time is bigger than FPS
-                if not script_time > 1.0/self.viewer_class.fps.get():
-                    time.sleep(1.0/self.viewer_class.fps.get() - script_time)
+                if not script_time > 1.0/self.fps:
+                    time.sleep(1.0/self.fps - script_time)
 
 
 class ExternalVideo(Frame): 
@@ -645,6 +651,8 @@ class BinViewer(Frame):
 
         self.filter = IntVar()
         self.old_filter = IntVar()
+
+        self.block_img_update = False
         self.img_data = 0
         self.current_image = ''
         self.current_image_cols = 768
@@ -771,7 +779,8 @@ class BinViewer(Frame):
         parent.bind("<F6>", self.even_set_toggle)
         parent.bind("<F7>", self.frame_filter_set)
 
-        parent.bind("<F9>", self.video_set)
+        if not disable_UI_video:
+            parent.bind("<F9>", self.video_set)
 
         parent.bind("<Delete>", self.deinterlace_toggle)
         parent.bind("<Insert>", self.hold_levels_toggle)
@@ -1060,6 +1069,7 @@ class BinViewer(Frame):
         moveImgLock.acquire()
                 
         if not self.listbox is self.parent.focus_get():
+
             self.listbox.focus()
 
             try:
@@ -1078,7 +1088,6 @@ class BinViewer(Frame):
 
             self.update_image(1)
 
-
         #print 'moved up!'
         moveImgLock.release()
 
@@ -1090,6 +1099,7 @@ class BinViewer(Frame):
         moveImgLock.acquire()
 
         if not self.listbox is self.parent.focus_get():
+
             self.listbox.focus()
             
             try:
@@ -1110,9 +1120,7 @@ class BinViewer(Frame):
             self.update_image(1)
 
 
-
         moveImgLock.release()
-        #print 'moved down!'
 
     def move_top(self, event):
         """ Moves to the top entry when Home key is pressed.
@@ -1154,6 +1162,8 @@ class BinViewer(Frame):
         """Moves the list cursor to given index.
         """
 
+        self.block_img_update = True
+
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
@@ -1167,16 +1177,22 @@ class BinViewer(Frame):
 
         moveImgLock.release()
 
+        self.block_img_update = False
+
         self.update_image(0)
 
     def seeCurrent(self):
         """ Show current selection on listbox.
         """
 
+        self.block_img_update = True
+
         # Index of current image in listbox
         cur_index = int(self.listbox.curselection()[0])
 
         self.listbox.see(cur_index)
+
+        self.block_img_update = False
 
     def capturedModeSet(self, event):
         """ Change mode to captured.
@@ -1335,6 +1351,8 @@ class BinViewer(Frame):
         """ Updates 2 varibales for tracking the current image, without changing the screen. Used for confirmation. 
         """
 
+        self.block_img_update = True
+
         updateImgLock = threading.RLock()
         updateImgLock.acquire()
 
@@ -1358,6 +1376,8 @@ class BinViewer(Frame):
 
         updateImgLock.release()
 
+        self.block_img_update = False
+
     def fast_img_on(self, direction):
         """ Set flag for fast image change when key is being held down.
         """
@@ -1373,7 +1393,6 @@ class BinViewer(Frame):
     def fast_img_off(self, direction):
         """ Set flag for fast image change when key is being pressed once.
         """
-        self.fast_img_change = False
 
         if not self.listbox is self.parent.focus_get():
             if direction == 'up':
@@ -1381,14 +1400,23 @@ class BinViewer(Frame):
             else:
                 self.move_img_down(0)
 
-        self.update_image(0)
+        if self.fast_img_change:
+            self.fast_img_change = False
+            self.update_image(0)
 
     def update_image(self, event, update_levels = False):
         """ Updates the current image on the screen.
         """
 
+        self.stop_video.set(True)  # Stop video every image update
+
+
         # Skip updating image when key is being held down
         if self.fast_img_change:
+            return 0
+
+        # Skip updating image on multiple consecutive updates
+        if self.block_img_update:
             return 0
 
         # Confirmation video flags, app and window
@@ -1408,8 +1436,6 @@ class BinViewer(Frame):
             self.current_image = self.listbox.get(self.listbox.curselection()[0])
         except:
             return 0
-
-        self.stop_video.set(True)  # Stop video every image update
 
         updateImageLock.release()
         
@@ -1484,6 +1510,7 @@ class BinViewer(Frame):
 
         elif self.mode.get() == 3: 
             # Prepare for confirmation
+
             self.confirmationListboxEntry = " ".join(self.current_image.split()[0:2])
             temp_info = self.confirmationDict[self.confirmationListboxEntry]
 
@@ -1728,6 +1755,9 @@ class BinViewer(Frame):
         elif self.filter.get() == 10:
             # Show video
 
+            if disable_UI_video:
+                return 0
+
             stop_confirmation_video = True
             stop_external_video = True
 
@@ -1739,10 +1769,11 @@ class BinViewer(Frame):
             self.min_lvl_scale.config(state = DISABLED)
             self.gamma_scale.config(state = DISABLED)
 
-            self.video_thread = Video(app, img_path)  # Create video object, pass binViewer class (app) to video object
-
             self.temp_frame.set(self.start_frame.get())  # Set temporary frame to start frame
             self.stop_video.set(False)  # Set "stop video" flag to False -> video will run
+
+            self.video_thread = Video(app, img_path)  # Create video object, pass binViewer class (app) to video object
+            self.video_thread.daemon = True
 
             self.old_filter.set(10)
 
@@ -1789,7 +1820,8 @@ class BinViewer(Frame):
         timestampLock = threading.RLock()
         timestampLock.acquire()
         if fps == None:
-            fps = " FFF"
+            #fps = " FFF"
+            fps = ""
         else:
             fps = str(fps).zfill(4)
 
@@ -1812,7 +1844,8 @@ class BinViewer(Frame):
 
 
         else:
-            timestamp = "YYYY-MM-DD HH:MM.SS.mms  FFF"
+            #timestamp = "YYYY-MM-DD HH:MM.SS.mms  FFF"
+            timestamp = "YYYY-MM-DD HH:MM.SS.mms"
 
         # Change the timestamp label
         self.timestamp_label.configure(text = timestamp)
@@ -3131,7 +3164,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.listbox = Listbox(self, width = 47, yscrollcommand=self.scrollbar.set, exportselection=0, activestyle = "none", bg = global_bg, fg = global_fg)
         # Listbox position is set in update_layout function
         
-        self.listbox.bind('<<ListboxSelect>>', self.update_image) 
+        self.listbox.bind('<<ListboxSelect>>', self.update_image)
         self.scrollbar.config(command = self.listbox.yview)
 
         # Filters panel
@@ -3157,8 +3190,9 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.frames_btn.grid(row = 2, column = 9)
 
         # Video
-        self.video_btn = Radiobutton(filter_panel, text = "VIDEO", variable = self.filter, value = 10, command = lambda: self.update_image(0))
-        self.video_btn.grid(row = 2, column = 10)
+        if not disable_UI_video:
+            self.video_btn = Radiobutton(filter_panel, text = "VIDEO", variable = self.filter, value = 10, command = lambda: self.update_image(0))
+            self.video_btn.grid(row = 2, column = 10)
 
         # Sort panel
         sort_panel = LabelFrame(self, text=' Sort FF*.bins ')
@@ -3194,7 +3228,8 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.imagelabel.grid(row=3, column=3, rowspan = 4, columnspan = 3)
 
         # Timestamp label
-        self.timestamp_label = Label(self, text = "YYYY-MM-DD HH:MM.SS.mms  FFF", font=("Courier", 12))
+        #self.timestamp_label = Label(self, text = "YYYY-MM-DD HH:MM.SS.mms  FFF", font=("Courier", 12))
+        self.timestamp_label = Label(self, text = "YYYY-MM-DD HH:MM.SS.mms", font=("Courier", 12))
         self.timestamp_label.grid(row = 7, column = 5, sticky = "E")
         #self.timestamp_label.grid(row = 2, column = 3, sticky = "WNS")
         
@@ -3417,9 +3452,12 @@ if __name__ == '__main__':
     log.info("Program start")
     log.info("Version: "+str(version))
 
-    # Initualize main window
+    # Initialize main window
     root = Tk()
+    # Set window position to the uppet-left corner
     root.geometry('+0+0')
+
+    # Set window icon
     try:
         root.iconbitmap(r'.'+os.sep+'icon.ico')
     except:
