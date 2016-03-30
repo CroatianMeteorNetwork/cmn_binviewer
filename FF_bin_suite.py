@@ -1161,6 +1161,25 @@ def adjust_levels(img_array, minv, gamma, maxv):
     img_array = img_array.astype(np.uint8)
 
     return img_array
+    
+
+def rescaleIntensity(image, in_range):
+    """ Rescale the image with given intensity range. 
+
+    @param image: [ndarray] 8-bit input image
+    @param in_range: [tuple] a tuple of minimum and maximum values to rescale
+    """
+
+    imin, imax = in_range
+    omin, omax = (0.0, 1.0)
+
+    # Clip image values to the given range
+    image = np.clip(image, imin, imax)
+
+    # Rescale intensities
+    image = (image - imin) / float(imax - imin)
+    return image * (omax - omin) + omin
+
 
 def cropDetectionSegments(ffBinRead, segmentList, cropSize = 64):
     """ Crops small images around detections.

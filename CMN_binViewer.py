@@ -3,7 +3,7 @@
 
 # Copyright notice (Revised BSD License)
 
-# Copyright (c) 2015, Denis Vida
+# Copyright (c) 2016, Denis Vida
 # Copyright (c) 2012, Almar Klein, Ant1, Marius van Voorden (images2gif.py)
 # All rights reserved.
 # Redistribution and use in source and binary forms, with or without modification, are permitted provided 
@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.41
+version = 2.43
 
 import os
 import io
@@ -48,7 +48,7 @@ import Tkinter as tk
 from ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
 from PIL import Image as img
 from PIL import ImageTk
-from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_dark, load_flat, process_array, saveImage, make_flat_frame, makeGIF, get_detection_only, get_processed_frames, adjust_levels, get_FTPdetect_coordinates, markDetections, deinterlace_array_odd, deinterlace_array_even
+from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_dark, load_flat, process_array, saveImage, make_flat_frame, makeGIF, get_detection_only, get_processed_frames, adjust_levels, get_FTPdetect_coordinates, markDetections, deinterlace_array_odd, deinterlace_array_even, rescaleIntensity
 from module_confirmationClass import Confirmation
 import module_exportLogsort as exportLogsort
 from module_highlightMeteorPath import highlightMeteorPath
@@ -56,7 +56,7 @@ from module_highlightMeteorPath import highlightMeteorPath
 # Disable video
 # Video inside the GUI is very prone to crashes due to TkInter being not thread-safe. Thus it is better to
 # leave the video disabled
-disable_UI_video = True
+disable_UI_video = False
 
 global_bg = "Black"
 global_fg = "Gray"
@@ -678,6 +678,9 @@ class BinViewer(Frame):
         self.hold_levels = BooleanVar()
         self.hold_levels.set(False)
 
+        self.arcsinh_status = BooleanVar()
+        self.arcsinh_status.set(False)
+
         self.sort_folder_path = StringVar()
         self.sort_folder_path.set("chosen")
 
@@ -905,7 +908,7 @@ class BinViewer(Frame):
 
         new_config.write("# Configuration file\n# DO NOT CHANGE VALUES MANUALLY\n\n")
 
-        new_config.write("orientation = "+str(orientation)+" # 0 vertical, 1 horizontal\n")
+        new_config.write("orientation = "+str(orientation)+" # 0 horizontal, 1 vertical\n")
         new_config.write("fps = "+str(fps)+"\n")
         if ('CAMS' in self.dir_path) or ('Captured' in self.dir_path) or ('Archived' in self.dir_path):
             temp_path = self.dir_path
@@ -1003,6 +1006,10 @@ class BinViewer(Frame):
             self.hold_levels_chk_horizontal.grid_forget()
             self.hold_levels_chk.grid(row = 6, column = 1, sticky = "W", pady=5)
 
+            self.arcsinh_chk_horizontal.grid_forget()
+            self.arcsinh_chk.grid(row = 6, column = 2, sticky = "W", pady=5)
+            
+
             # Check if Save image frame is enabled in Windows menu, if not, hide it
             if self.save_image_frame.get() == True:
                 self.save_panel.grid(row = 8, column = start_column+enabled_frames, rowspan = 2, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
@@ -1044,6 +1051,9 @@ class BinViewer(Frame):
 
             self.hold_levels_chk.grid_forget()
             self.hold_levels_chk_horizontal.grid(row = 11, column = 4, columnspan = 2, sticky = "W")
+
+            self.arcsinh_chk.grid_forget()
+            self.arcsinh_chk_horizontal.grid(row = 11, column = 5, columnspan = 2, sticky = "W")
 
 
             self.save_panel.grid(row = 3, column = 6, rowspan = 1, sticky = "NEW", padx=2, pady=5, ipadx=3, ipady=3)
@@ -1630,6 +1640,7 @@ class BinViewer(Frame):
             self.flat_chk.config(state = NORMAL)
             self.deinterlace_chk.config(state = NORMAL)
             self.hold_levels_chk.config(state = NORMAL)
+            self.arcsinh_chk.config(state = NORMAL)
             self.max_lvl_scale.config(state = NORMAL)
             self.min_lvl_scale.config(state = NORMAL)
             self.gamma_scale.config(state = NORMAL)
@@ -1765,6 +1776,7 @@ class BinViewer(Frame):
             self.flat_chk.config(state = DISABLED)
             self.deinterlace_chk.config(state = DISABLED)
             self.hold_levels_chk.config(state = DISABLED)
+            self.arcsinh_chk.config(state = DISABLED)
             self.max_lvl_scale.config(state = DISABLED)
             self.min_lvl_scale.config(state = DISABLED)
             self.gamma_scale.config(state = DISABLED)
@@ -1780,6 +1792,22 @@ class BinViewer(Frame):
             self.video_thread.start()  # Start video thread
 
             return 0
+
+
+        # Apply arcsinh if on
+        if self.arcsinh_status.get():
+            # Apply arcshin on an image
+            limg = np.arcsinh(img_array)
+
+            # Normalize values to 1
+            limg = limg / limg.max()
+
+            # Find low and high intensity percentiles
+            low = np.percentile(limg, 0.25)
+            high = np.percentile(limg, 99.5)
+
+            # Rescale image levels with the given range
+            img_array = (rescaleIntensity(limg, in_range=(low,high))*255).astype(np.uint8)
 
 
         # Adjust levels
@@ -2952,7 +2980,7 @@ class BinViewer(Frame):
             """CMN_binViewer version: """+str(version)+"""\n
             Croatian Meteor Network\n
             http://cmn.rgn.hr/\n
-            Copyright © 2015 Denis Vida
+            Copyright © 2016 Denis Vida
             E-mail: denis.vida@gmail.com\n
 Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
 images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden
@@ -3137,26 +3165,28 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.dark_chk.grid(row = 4, column = 0, sticky = "W")
 
         dark_entry = StyledEntry(calib_panel, textvariable = self.dark_name, width = 25)
-        dark_entry.grid(row = 4, column = 1, sticky = "W")
+        dark_entry.grid(row = 4, column = 1, columnspan = 2, sticky = "W")
 
         dark_button = StyledButton(calib_panel, text = "Open", command = self.open_dark_path, width = 5)
-        dark_button.grid(row =4, column = 2, sticky ="W")
+        dark_button.grid(row =4, column = 3, sticky ="W")
 
         self.flat_chk = Checkbutton(calib_panel, text = "Flat frame", variable = self.flat_status, command = lambda: self.update_image(0))
         self.flat_chk.grid(row = 5, column = 0, sticky = "W")
 
         flat_entry = StyledEntry(calib_panel, textvariable = self.flat_name, width = 25)
-        flat_entry.grid(row = 5, column = 1, sticky = "W")
+        flat_entry.grid(row = 5, column = 1, columnspan = 2, sticky = "W")
 
         flat_button = StyledButton(calib_panel, text = "Open", command = self.open_flat_path, width = 5)
-        flat_button.grid(row = 5, column = 2, sticky ="W")
+        flat_button.grid(row = 5, column = 3, sticky ="W")
 
         self.deinterlace_chk = Checkbutton(calib_panel, text = "Deinterlace", variable = self.deinterlace, command = lambda: self.update_image(0))
         self.deinterlace_chk.grid(row = 6, column = 0, sticky = "W")
 
         self.hold_levels_chk = Checkbutton(calib_panel, text = 'Hold levels', variable = self.hold_levels)
-        self.hold_levels_chk.grid(row = 7, column = 0, sticky = "W")
+        self.hold_levels_chk.grid(row = 6, column = 1, sticky = "W")
 
+        self.arcsinh_chk = Checkbutton(calib_panel, text = 'Enh. stars', variable = self.arcsinh_status, command = lambda: self.update_image(0))
+        self.arcsinh_chk.grid(row = 6, column = 2, sticky = "W")
 
 
         # Listbox
@@ -3281,7 +3311,8 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
 
         self.gamma_scale.config(command = self.update_scales)
 
-        self.hold_levels_chk_horizontal = Checkbutton(self.levels_label, text = 'Hold levels', variable = self.hold_levels) 
+        self.hold_levels_chk_horizontal = Checkbutton(self.levels_label, text = 'Hold levels', variable = self.hold_levels)
+        self.arcsinh_chk_horizontal = Checkbutton(self.levels_label, text = 'Enh. stars', variable = self.arcsinh_status, command = lambda: self.update_image(0))
         # Position set in update_layout function
         
 
