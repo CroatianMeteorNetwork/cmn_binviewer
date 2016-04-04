@@ -105,3 +105,6 @@ v2.42 - May 21, 2015
 
 v2.43 - March 30, 2016
   - added star enhancing algorithm
+
+v2.44 - April 4, 2016
+  - copy files with uppercase file extensions (e.g. *.TXT, *.INF, etc.) on Confirmation end

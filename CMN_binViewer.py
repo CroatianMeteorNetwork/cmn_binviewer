@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.43
+version = 2.44
 
 import os
 import io
@@ -2854,7 +2854,11 @@ class BinViewer(Frame):
                     copy2(self.dir_path+os.sep+dir_file, self.ConfirmationInstance.confirmationDirectory+os.sep+"".join(dir_file.split('.')[:-1])+'_pre-confirmation.txt')
                     ftpDetectFile = dir_file
                     continue
-                elif ('.txt' in dir_file) or ('.inf' in dir_file) or ('.rpt' in dir_file) or ('.log' in dir_file) or ('.hmm' in dir_file) or ('.cal' in dir_file):
+                elif ('.txt' in dir_file) or ('.TXT' in dir_file) or ('.inf' in dir_file) or ('.INF' 
+                    in dir_file) or ('.rpt' in dir_file) or ('.RPT' in dir_file) or ('.log' in 
+                    dir_file) or ('.LOG' in dir_file) or ('.hmm' in dir_file) or ('.HMM' in 
+                    dir_file) or ('.cal' in dir_file)or ('.CAL' in dir_file):
+
                     copy2(self.dir_path+os.sep+dir_file, self.ConfirmationInstance.confirmationDirectory+os.sep+dir_file)
 
             if ftpDetectFile == '':
