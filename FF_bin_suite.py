@@ -513,13 +513,9 @@ def fixFlat_frame(Flat_frame, Flat_frame_scalar):
 def add_scalar(array, scalar, min_clip = 0, max_clip = 255):
     """ Function that add a scalar value to all 2D array elements, with respect to minumum and maximum values.
     """
-    nrows = len(array)
-    ncols = len(array[0])
-    scalar_array = np.zeros(shape=(nrows, ncols), dtype=np.int)
-    scalar_array.fill(scalar)
-    sum_array = np.add(array, scalar_array)
 
-    return np.clip(sum_array, min_clip, max_clip) #Clip values
+    #Clip values
+    return np.clip(array + scalar, min_clip, max_clip) 
     
 def max_nomean(ff_bin, Flat_frame = None, Flat_frame_scalar = None):
     """ Returns an array which represents maxpixel image with removed flat field and mean background, so just detections are visible.
@@ -1095,8 +1091,8 @@ def colorize_maxframe(ff_bin, minv = None, gamma = None, maxv = None):
     """ Colorizes the B/W maxframe into red/blue image. Odd frames are colored red, even frames are colored blue.
     """
 
-    ff_maxframe = ff_bin.maxpixel
-    ff_avgframe = ff_bin.avepixel
+    ff_maxframe = ff_bin.maxpixel.astype(np.int16)
+    ff_avgframe = ff_bin.avepixel.astype(np.int16)
 
 
     ff_maxframe_noavg = np.subtract(ff_maxframe, ff_avgframe)
@@ -1131,7 +1127,7 @@ def colorize_maxframe(ff_bin, minv = None, gamma = None, maxv = None):
     colored_array = np.dstack((odd_frame, even_frame, even_frame)) #R G B
 
     avg_rgb = np.dstack((ff_avgframe, ff_avgframe, ff_avgframe))
-    colored_array = np.add(colored_array, avg_rgb)
+    colored_array = np.clip(np.add(colored_array, avg_rgb), 0, 255).astype(np.uint8)
 
     return colored_array
 

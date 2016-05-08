@@ -108,3 +108,6 @@ v2.43 - March 30, 2016
 
 v2.44 - April 4, 2016
   - copy files with uppercase file extensions (e.g. *.TXT, *.INF, etc.) on Confirmation end
+
+v2.45 - May 8, 2016
+  - added support for Multi camera Confirmation

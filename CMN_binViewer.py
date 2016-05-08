@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.44
+version = 2.45
 
 import os
 import io
@@ -1794,7 +1794,7 @@ class BinViewer(Frame):
             return 0
 
 
-        # Apply arcsinh if on
+        # Apply Enhance stars if on
         if self.arcsinh_status.get():
             # Apply arcshin on an image
             limg = np.arcsinh(img_array)
@@ -2513,13 +2513,59 @@ class BinViewer(Frame):
         mkdir_p(confirmationDirectory)
 
         image_list = []
-        ftpDetectFile = ''
+        ftp_detect_list = []
+
+        # Find all FTPdetectinfo files in the directory
         for image in os.listdir(self.dir_path):
             if self.correct_datafile_name(image):
                 image_list.append(image)
                 continue
-            if ('FTPdetectinfo' in image) and ('.txt' in image) and (not '_original' in image):
-                ftpDetectFile = image
+            if ('FTPdetectinfo' in image) and ('.txt' in image):
+                ftp_detect_list.append(image)
+
+        ftpDetectFile = ''
+
+        # Check if there are several FTPdetectinfo files in the directory
+        if len(ftp_detect_list) > 1:
+
+            # Offer the user to choose from several FTPdetectinfo files
+
+            # Open a new window with radiobuttons
+            ftpdetectinfo_window = tk.Toplevel(self.parent)
+            ftpdetectinfo_window.wm_title("Choose FTPdetectinfo")
+            ftpdetectinfo_window.lift()
+            ftpdetectinfo_window.configure(background=global_bg, padx=10, pady=10)
+
+            # Add a label
+            w = Label(ftpdetectinfo_window, text="""Several FTPdetectinfo files were found in the chosen directory. \nPlease choose which one do you want to use for Confirmation.\n""")
+            w.pack()
+
+            # Add radiobuttons
+            ftp_choice = IntVar()
+            ftp_choice.set(0)
+            for i, ftpdetect_name in enumerate(ftp_detect_list):
+                b = Radiobutton(ftpdetectinfo_window, text=ftpdetect_name, variable=ftp_choice, value=i)
+                b.pack(anchor=W)
+
+
+            # Add a closing button
+            b = Button(ftpdetectinfo_window, text="OK", command=lambda:ftpdetectinfo_window.destroy())
+            b.pack()
+
+            # Wait until the FTPdetectinfo file is chosen
+            self.parent.wait_window(ftpdetectinfo_window)
+
+            # Choose the selected FTPdetectinfo file
+            ftpDetectFile = ftp_detect_list[ftp_choice.get()]
+
+
+        elif len(ftp_detect_list) == 1:
+            # Choose the only one found FTPdetectinfo file
+            ftpDetectFile = ftp_detect_list[0]
+
+        else:
+            # If not FTPdetectinfo files were found, show an error message
+            ftpDetectFile = ''
 
         if ftpDetectFile == '':
             tkMessageBox.showerror("FTPdetectinfo error", "No FTPdetectinfo file could be found in directory: "+self.dir_path)
@@ -2848,12 +2894,11 @@ class BinViewer(Frame):
                 if ff_bin in dir_contents:
                     copy2(self.dir_path+os.sep+ff_bin, self.ConfirmationInstance.confirmationDirectory+os.sep+ff_bin)
 
-            ftpDetectFile = ''
             for dir_file in dir_contents:
-                if 'FTPdetectinfo' in dir_file and (not '_original' in dir_file):
+                if ('FTPdetectinfo' in dir_file) and ('.txt' in dir_file) and not ('_original' in dir_file):
                     copy2(self.dir_path+os.sep+dir_file, self.ConfirmationInstance.confirmationDirectory+os.sep+"".join(dir_file.split('.')[:-1])+'_pre-confirmation.txt')
-                    ftpDetectFile = dir_file
                     continue
+
                 elif ('.txt' in dir_file) or ('.TXT' in dir_file) or ('.inf' in dir_file) or ('.INF' 
                     in dir_file) or ('.rpt' in dir_file) or ('.RPT' in dir_file) or ('.log' in 
                     dir_file) or ('.LOG' in dir_file) or ('.hmm' in dir_file) or ('.HMM' in 
@@ -2861,11 +2906,9 @@ class BinViewer(Frame):
 
                     copy2(self.dir_path+os.sep+dir_file, self.ConfirmationInstance.confirmationDirectory+os.sep+dir_file)
 
-            if ftpDetectFile == '':
-                tkMessageBox.showerror("FTPdetectinfo", "No FTPdetectinfo file found in: "+self.dir_path)
-                return 1
 
-            newFTPdetectinfo = open(self.ConfirmationInstance.confirmationDirectory+os.sep+ftpDetectFile, 'w')
+            # Write the filtered FTPdetectinfo content to a new file
+            newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, os.path.basename(self.ConfirmationInstance.FTP_detect_file)), 'w')
             for line in FTPdetectinfoExport:
                 newFTPdetectinfo.write(line)
 
