@@ -256,8 +256,8 @@ class ExternalVideo(Frame):
             self.external_video_FFbinRead.avepixel = highlightMeteorPath(self.external_video_FFbinRead.avepixel, 
                                                                             HT_rho, HT_phi)
 
-        self.external_video_ncols = self.external_video_FFbinRead.ncols[0] - 1
-        self.external_video_nrows = self.external_video_FFbinRead.nrows[0] - 1
+        self.external_video_ncols = self.external_video_FFbinRead.ncols - 1
+        self.external_video_nrows = self.external_video_FFbinRead.nrows - 1
 
         if dimensions == 2:
             # 1.5 size external video
@@ -393,8 +393,8 @@ class ConfirmationVideo(Frame):
         self.confirmation_video_segmentList = get_FTPdetect_coordinates(FTPdetectinfoContents, current_image, meteorNo)
         self.confirmation_video_FFbinRead = readFF(img_path, datatype = data_type)
 
-        self.confirmation_video_ncols = self.confirmation_video_FFbinRead.ncols[0] - 1
-        self.confirmation_video_nrows = self.confirmation_video_FFbinRead.nrows[0] - 1
+        self.confirmation_video_ncols = self.confirmation_video_FFbinRead.ncols - 1
+        self.confirmation_video_nrows = self.confirmation_video_FFbinRead.nrows - 1
 
         self.confirmation_video_startFrame = 0
         self.confirmation_video_endFrame = len(self.confirmation_video_segmentList[0]) - 1
@@ -948,7 +948,7 @@ class BinViewer(Frame):
 
         if data_type_var == 0:
             # Auto - determine data type
-            bin_count = len(glob.glob1(self.dir_path,"*.bin"))
+            bin_count = len(glob.glob1(self.dir_path,"FF*.bin"))
             bmp_count = len(glob.glob1(self.dir_path,"*.bmp"))
 
             dir_contents = os.listdir(self.dir_path)
@@ -1615,6 +1615,7 @@ class BinViewer(Frame):
                 dark_path = self.dir_path+os.sep+self.dark_name.get()
             else:
                 dark_path = self.dark_name.get()
+
             try:
                 dark_frame = load_dark(dark_path)
             except:
@@ -1627,6 +1628,7 @@ class BinViewer(Frame):
                 flat_path = self.dir_path+os.sep+self.flat_name.get()
             else:
                 flat_path = self.flat_name.get()
+
             try:
                 flat_frame, flat_frame_scalar = load_flat(flat_path)
             except:
@@ -1829,7 +1831,7 @@ class BinViewer(Frame):
         self.current_image_cols = len(img_array[0])
 
         self.img_data = img_array
-        temp_image = ImageTk.PhotoImage(img.fromarray(img_array).convert("RGB")) #Prepare for showing
+        temp_image = ImageTk.PhotoImage(img.fromarray(img_array.astype(np.uint8)).convert("RGB")) #Prepare for showing
 
         self.imagelabel.configure(image = temp_image)
         self.imagelabel.image = temp_image #For reference, otherwise it doesn't work
@@ -2024,10 +2026,13 @@ class BinViewer(Frame):
         if dark_dir == '': 
             self.status_bar.config(text = "Master dark frame making aborted!")
             return 0
+
         dark_file = tkFileDialog.asksaveasfilename(initialdir = dark_dir, parent = self.parent, title = "Choose the master dark file name", initialfile = "dark.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
+
         if dark_file == '': 
             self.status_bar.config(text = "Master dark frame making aborted!")
             return 0
+
         dark_dir = dark_dir.replace("/", os.sep)
         dark_file = dark_file.replace("/", os.sep)
 
@@ -2040,6 +2045,7 @@ class BinViewer(Frame):
             self.status_bar.config(text = "Files for master dark not chosen!")
 
         self.status_bar.config(text = "Master dark frame done!")
+
         tkMessageBox.showinfo("Master dark frame", "Master dark frame done!")
 
     def make_master_flat(self):
@@ -2239,7 +2245,7 @@ class BinViewer(Frame):
 
             line = line.replace('\n', '')
 
-            if ("FF in line") and (".bin" in line):
+            if ("FF" in line) and (".bin" in line):
                 ff_bin_list.append([line.strip()])
                 skip = 2
                 frame_list = None
@@ -3512,7 +3518,7 @@ if __name__ == '__main__':
     log = logging.getLogger(__name__)
     log.setLevel(logging.INFO)
 
-    log_file=log_directory+log_timestamp()+'.log'
+    log_file = log_directory+log_timestamp()+'.log'
     handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1) #Log to a different file each day
     handler.setLevel(logging.INFO)
 
