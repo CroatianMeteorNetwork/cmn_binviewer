@@ -29,6 +29,22 @@ Copyright (c) 2014-2015, Denis Vida
 * images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden
 * gifsicle: Copyright © 1997-2013 Eddie Kohler
 
+**Troubleshooting (Ubuntu/Debian)**
+
+1. ImportError: No module named wx:
+
+Run:
+```
+sudo apt-get install python-wxgtk3.0
+```
+
+2. ImportError: cannot import name ImageTk:
+
+Run:
+```
+sudo apt-get install python-imaging-tk
+```
+
 **Acknowledgements**
 
 Many thanks to:
