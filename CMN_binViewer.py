@@ -3468,6 +3468,8 @@ external_video_app = None
 external_video_root = None
 stop_external_video = False
 
+
+
 def confirmationVideoInitialize(img_cols):
     """ Initializes the Confirmation video window. 
     """
@@ -3482,7 +3484,15 @@ def confirmationVideoInitialize(img_cols):
     confirmation_video_root.geometry('+'+img_cols+'+130')
 
     confirmation_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None) # Override close button to do nothing
-    confirmation_video_root.attributes("-toolwindow", 1)  # Remove minimize and maximize buttons
+
+
+    try:
+    	# Remove minimize and maximize buttons (works only on Windows!)
+    	confirmation_video_root.attributes("-toolwindow", 1)  
+    except:
+    	pass
+
+
 
 def externalVideoInitialize(img_cols):
     """ Initializes the External video window. 
