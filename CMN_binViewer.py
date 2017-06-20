@@ -3481,14 +3481,16 @@ def confirmationVideoInitialize(img_cols):
 
     # Set position of the external window
     img_cols = str(int(770 + 0.92*img_cols/2))
-    confirmation_video_root.geometry('+'+img_cols+'+130')
+    confirmation_video_root.geometry('+' + img_cols + '+130')
 
-    confirmation_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None) # Override close button to do nothing
-
-
+    # Try window mondifications (works only on Windows!)
     try:
-    	# Remove minimize and maximize buttons (works only on Windows!)
+    	# Remove minimize and maximize buttons
     	confirmation_video_root.attributes("-toolwindow", 1)  
+
+    	# Override close button to do nothing
+    	confirmation_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None)
+
     except:
     	pass
 
