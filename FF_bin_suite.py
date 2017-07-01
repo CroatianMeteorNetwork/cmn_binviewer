@@ -131,8 +131,8 @@ def readFF(filename, datatype = 1):
         ff.ncols = int(np.fromfile(fid, dtype=np.uint32, count = 1))
 
         ff.nframes = int(np.fromfile(fid, dtype=np.uint32, count = 1))
-
         ff.first = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+        ff.camno = int(np.fromfile(fid, dtype=np.uint32, count = 1))
 
         ff.decimation_fact = int(np.fromfile(fid, dtype=np.uint32, count = 1))
 
