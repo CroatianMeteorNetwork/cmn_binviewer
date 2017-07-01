@@ -21,10 +21,8 @@ Reading from FF*.bin files based on Matlab scripts by Peter S. Gural.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 from images2gif import writeGif
 import os
-from scipy.ndimage.interpolation import rotate
 from PIL import Image as img
 from PIL import ImageFont
 from PIL import ImageDraw
@@ -1150,62 +1148,64 @@ def find_crop_size(crop_array, size = 15):
 
 
 
-def rotate_n_crop(ff_bin, ff_path, Flat_frame, Flat_frame_scalar):
-    """ Function for rotating the maxframe from bin file and cropping the meteor part based on the FTP_detectinfo detection data.
-    """
+# def rotate_n_crop(ff_bin, ff_path, Flat_frame, Flat_frame_scalar):
+#     """ Function for rotating the maxframe from bin file and cropping the meteor part based on the FTP_detectinfo detection data.
+#     """
 
-    if not ff_path[-1] == os.sep:
-        ff_path += os.sep
+#     from scipy.ndimage.interpolation import rotate
 
-    if not os.path.exists(ff_path):
-        print ff_path+" does not exist!"
-        return False
+#     if not ff_path[-1] == os.sep:
+#         ff_path += os.sep
 
-    FTPdetect_file = ""
-    for line in os.listdir(ff_path):
-        if ("FTPdetectinfo_" in line) and (".txt" in line) and (not "_original" in line):
-            FTPdetect_file = line
-            break
+#     if not os.path.exists(ff_path):
+#         print ff_path+" does not exist!"
+#         return False
 
-    ff_bin_path = ff_path+ff_bin
+#     FTPdetect_file = ""
+#     for line in os.listdir(ff_path):
+#         if ("FTPdetectinfo_" in line) and (".txt" in line) and (not "_original" in line):
+#             FTPdetect_file = line
+#             break
 
-    max_nomean_array = max_nomean(ff_bin_path, Flat_frame, Flat_frame_scalar)
-    saveImage(max_nomean_array, ff_bin_path+"_max_nomean.bmp", print_name = False)
+#     ff_bin_path = ff_path+ff_bin
 
-    max_bg_mean = int(np.mean(max_nomean_array))
-    print max_bg_mean
+#     max_nomean_array = max_nomean(ff_bin_path, Flat_frame, Flat_frame_scalar)
+#     saveImage(max_nomean_array, ff_bin_path+"_max_nomean.bmp", print_name = False)
 
-    ###MUST MAKE SOME SORT OF IMAGE MASKING HERE!!!!!!!!!!!!! Problem is when meteor is in the corner, then the lightcurve will be calculated with dark corners during rotation
+#     max_bg_mean = int(np.mean(max_nomean_array))
+#     print max_bg_mean
 
-    coord_list, rot_angle = get_FTPdetect_coordinates(ff_path+FTPdetect_file, ff_bin)
+#     ###MUST MAKE SOME SORT OF IMAGE MASKING HERE!!!!!!!!!!!!! Problem is when meteor is in the corner, then the lightcurve will be calculated with dark corners during rotation
 
-    nrows = len(max_nomean_array)
-    ncols = len(max_nomean_array[0])
-    crop_array = np.zeros(shape=(nrows, ncols), dtype=np.int) #Make a temporary 2D array which helps determine the crop coordinates after rotation
+#     coord_list, rot_angle = get_FTPdetect_coordinates(ff_path+FTPdetect_file, ff_bin)
 
-    for coord in coord_list:
-        x = coord[0]
-        y = coord[1]
-        crop_array[x][y] = 255
+#     nrows = len(max_nomean_array)
+#     ncols = len(max_nomean_array[0])
+#     crop_array = np.zeros(shape=(nrows, ncols), dtype=np.int) #Make a temporary 2D array which helps determine the crop coordinates after rotation
 
-    crop_array = rotate(crop_array, -rot_angle+90, order = 0)
+#     for coord in coord_list:
+#         x = coord[0]
+#         y = coord[1]
+#         crop_array[x][y] = 255
 
-    first_x, first_y, last_x, last_y = find_crop_size(crop_array)
+#     crop_array = rotate(crop_array, -rot_angle+90, order = 0)
 
-    saveImage(crop_array, 'test_croptest.bmp', print_name = False)
+#     first_x, first_y, last_x, last_y = find_crop_size(crop_array)
 
-    rotated_img = rotate(max_nomean_array, -rot_angle+90, order = 0)
+#     saveImage(crop_array, 'test_croptest.bmp', print_name = False)
 
-    rotated_img[rotated_img < 3] = max_bg_mean #Polish out the black edges
-    #print rotated_img
+#     rotated_img = rotate(max_nomean_array, -rot_angle+90, order = 0)
 
-    max_nomean_croped = rotated_img[first_y:last_y, first_x:last_x] #Crop out the image array
+#     rotated_img[rotated_img < 3] = max_bg_mean #Polish out the black edges
+#     #print rotated_img
 
-    saveImage(max_nomean_array, 'test_raw.bmp', print_name = False)
-    saveImage(rotated_img, 'test_rotated.bmp', print_name = False)
-    saveImage(max_nomean_croped, 'test_meteor_croped.bmp', print_name = False)
+#     max_nomean_croped = rotated_img[first_y:last_y, first_x:last_x] #Crop out the image array
 
-    return max_nomean_croped
+#     saveImage(max_nomean_array, 'test_raw.bmp', print_name = False)
+#     saveImage(rotated_img, 'test_rotated.bmp', print_name = False)
+#     saveImage(max_nomean_croped, 'test_meteor_croped.bmp', print_name = False)
+
+#     return max_nomean_croped
 
 
 
@@ -1414,6 +1414,9 @@ def cropDetectionSegments(ffBinRead, segmentList, cropSize = 64):
 
 
 # if __name__ == "__main__":
+
+    # import matplotlib.pyplot as plt
+
     #ftpdetect = "C:\\Users\\Laptop\\Desktop\\2014080809-Processed\\FTPdetectinfo_0453_2014_08_08.txt"
 
     #makeGIF(get_FTPdetect_frames(ftpdetect), 'C:\\Users\\Laptop\\Desktop\\2014080809-Processed')
