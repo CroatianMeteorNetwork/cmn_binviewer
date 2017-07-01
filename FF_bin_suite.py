@@ -40,11 +40,35 @@ class ff_struct:
     """ Default structure for a FF*.bin file.
     """
     def __init__(self):
+        
+        # Number of image rows
         self.nrows = 0
+
+        # Number of image columns
         self.ncols = 0
+
+        # 2*nbits compressed frames (OLD format)
         self.nbits = 0
+
+        # Number of compressed frames (NEW format)
+        self.nframes = 0
+
+        # First frame number
         self.first = 0
+
+        # Camera number (station ID) (OLD format)
         self.camno = 0
+
+        # Decimation factor (NEW format)
+        self.decimation_fact = 0
+
+        # Interleave flag (0=prog, 1=even/odd, 2=odd/even) (NEW format)
+        self.interleave_flag = 0
+
+        # Frames per seconds (NEW format)
+        self.fps = 0
+
+
         self.maxpixel = 0
         self.maxframe = 0
         self.avepixel = 0
@@ -82,12 +106,42 @@ def readFF(filename, datatype = 1):
 
     fid = open(filename, 'rb')
     ff = ff_struct()
-    ff.nrows = int(np.fromfile(fid, dtype=np.uint32, count = 1))
-    ff.ncols = int(np.fromfile(fid, dtype=np.uint32, count = 1))
-    ff.nbits = int(np.fromfile(fid, dtype=np.uint32, count = 1))
-    ff.first = int(np.fromfile(fid, dtype=np.uint32, count = 1))
-    ff.camno = int(np.fromfile(fid, dtype=np.uint32, count = 1))
 
+    # Check if it is the new of the old CAMS data format
+    version_flag = int(np.fromfile(fid, dtype=np.int32, count = 1))
+
+    # Old format
+    if version_flag > 0:
+
+        ff.nrows = version_flag
+        ff.ncols = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+        ff.nbits = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+        ff.nframes = 2**ff.nbits
+        ff.first = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+        ff.camno = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+
+        ff.decimation_fact = 1
+
+        
+
+    # New format
+    elif version_flag == -1:
+
+        ff.nrows = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+        ff.ncols = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+
+        ff.nframes = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+
+        ff.first = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+
+        ff.decimation_fact = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+
+        ff.interleave_flag = int(np.fromfile(fid, dtype=np.uint32, count = 1))
+
+        ff.fps = float(np.fromfile(fid, dtype=np.uint32, count = 1))/1000
+
+
+    # Number of pixels in each image
     N = ff.nrows*ff.ncols
 
     # Try reading image arrays

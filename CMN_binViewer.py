@@ -824,20 +824,29 @@ class BinViewer(Frame):
         """
 
         if self.data_type.get() == 1:
-            # CAMS data type
+
+            # CAMS data type (OLD)
             if len(datafile) == 37:
                 # e.g. FF451_20140819_003718_000_0397568.bin
-                if len([ch for ch in datafile if ch =="_"]) == 4:
+                if datafile.count("_") == 4:
                     if datafile.split('.')[-1] =='bin':
                         if datafile[0:2] =="FF":
-                            return True
+                            return True, 1
+
+            # CAMS data type (NEW)
+            if len(datafile) == 41:
+                # e.g. FF_000432_20161024_075333_209_0944384.bin
+                if datafile.count("_") == 5:
+                    if datafile.split('.')[-1] =='bin':
+                        if datafile[0:2] =="FF":
+                            return True, -1
         
         else:  
             # Skypatrol data type
             if len(datafile) == 12:
                 # e.g. 00000171.bmp
                 if datafile.split('.')[-1] =='bmp':
-                    return True
+                    return True, 0
 
         return False
 
@@ -1861,12 +1870,31 @@ class BinViewer(Frame):
         else:
             current_image = self.current_image
 
-        if self.correct_datafile_name(current_image):
+        # Check if the given file has a standard file name
+        correct_status, format_type = self.correct_datafile_name(current_image)
+
+        # Extract the proper timestamp for the given data format
+        if correct_status:
             if self.data_type.get() == 1:
-                # CAMS data type
+
                 x = current_image.split('_')
-                timestamp = x[1][0:4]+"-"+x[1][4:6]+"-"+x[1][6:8]+" "+x[2][0:2]+":"+x[2][2:4]+":"+x[2][4:6]+"."+x[3]+" "+fps
+
+                # CAMS data type (OLD)
+                if format_type > 0:
+                    timestamp = x[1][0:4]+ "-" + x[1][4:6] + "-" + x[1][6:8] + " " + x[2][0:2] + ":" \
+                        + x[2][2:4] + ":" + x[2][4:6] + "." + x[3] + " " + fps
+
+                # CAMS data tyoe (NEW)
+                elif format_type == -1:
+                    timestamp = x[2][0:4] + "-" + x[2][4:6] + "-" + x[2][6:8] + " " + x[3][0:2] + ":" + x[3][2:4] + ":" + x[3][4:6] + "." + x[4] + " " + fps
+
+                else:
+                    timestamp = ""
+
+
+
             else:
+
                 # Skypatrol data type
                 img_path = self.dir_path+os.sep+current_image
                 (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(img_path)
