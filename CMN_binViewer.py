@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.5
+version = 2.51
 
 import os
 import io
@@ -2448,7 +2448,7 @@ class BinViewer(Frame):
             if detected_list == False:
                 self.mode.set(1)
                 return 0
-            elif detected_list[0] == []:
+            elif not detected_list:
                 tkMessageBox.showinfo("FTPdetectinfo info", "No detections in the FTPdetectinfo file!")
                 self.mode.set(1)
                 return 0
