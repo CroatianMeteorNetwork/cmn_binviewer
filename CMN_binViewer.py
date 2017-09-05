@@ -159,7 +159,7 @@ class Video(threading.Thread):
 
             video_cache = []  # Storing the fist run of reading from file to an array
 
-            ff_bin_read = readFF(self.img_path, datatype = self.data_type)
+            ff_bin_read = readFF(self.img_path, datatype=self.data_type)
 
             
 
@@ -242,7 +242,7 @@ class ExternalVideo(Frame):
         self.fps = fps
         self.dimensions = dimensions
 
-        self.external_video_FFbinRead = readFF(img_path, datatype = data_type)
+        self.external_video_FFbinRead = readFF(img_path, datatype=data_type)
 
         # Apply levels and gamma
         self.external_video_FFbinRead.maxpixel = adjust_levels(self.external_video_FFbinRead.maxpixel, 
@@ -276,16 +276,27 @@ class ExternalVideo(Frame):
         self.parent.geometry(str(self.external_video_ncols)+"x"+str(self.external_video_nrows))
 
         # Add a few frames to each side, to better see the detection
-        start_temp = start_frame-5
-        end_temp = end_frame+5
+        start_temp = start_frame - 5
+        end_temp = end_frame + 5
 
         start_frame = 0 if start_temp<0 else start_temp
+
         if data_type == 1:
+            
             # CAMS data type
             end_frame = 255 if end_temp>255 else end_temp
-        else: 
+
+        elif data_type == 2: 
+            
             # Skypatrol data dype
             end_frame = 1500 if end_temp>1500 else end_temp
+
+        elif data_type == 3:
+
+            # FITS file type
+            end_frame = self.external_video_FFbinRead.nframes if end_temp > self.external_video_FFbinRead.nframes else end_temp
+
+
 
 
         self.external_video_startFrame = start_frame
@@ -841,12 +852,21 @@ class BinViewer(Frame):
                         if datafile[0:2] =="FF":
                             return True, -1
         
-        else:  
+        elif self.data_type.get() == 2:
+
             # Skypatrol data type
+
             if len(datafile) == 12:
                 # e.g. 00000171.bmp
                 if datafile.split('.')[-1] =='bmp':
                     return True, 0
+
+        else:
+
+            # FITS data type
+            if datafile.lower().endswith('.fits'):
+                if datafile.lower().startswith('ff'):
+                    return True, -1
 
         return False
 
@@ -945,7 +965,8 @@ class BinViewer(Frame):
         return True
 
     def update_data_type(self):
-        """ Updates the data_type variable to match data type of directory content. If there are CAMS files, it returns 1, if the Skypatrol files prevail, it returns 2.
+        """ Updates the data_type variable to match data type of directory content. If there are CAMS files, 
+            it returns 1, if the Skypatrol files prevail, it returns 2, and if fits pervial it returns 3.
         """
 
         # If changing during confirmation
@@ -956,30 +977,53 @@ class BinViewer(Frame):
         data_type_var = self.data_type_var.get()
 
         if data_type_var == 0:
+
             # Auto - determine data type
             bin_count = len(glob.glob1(self.dir_path,"FF*.bin"))
             bmp_count = len(glob.glob1(self.dir_path,"*.bmp"))
+            fits_count = len(glob.glob1(self.dir_path,"FF*.fits"))
 
             dir_contents = os.listdir(self.dir_path)
 
-            if bin_count >= bmp_count or ("FTPdetectinfo_" in dir_contents):
-                self.data_type.set(1)  # Set to CAMS if there are more bin files
+            if ((bin_count >= bmp_count) and (bin_count >= fits_count)) or ("FTPdetectinfo_" in dir_contents):
+                
+                # Set to CAMS if there are more bin files
+                self.data_type.set(1)  
                 self.end_frame.set(255)
-            else:
-                self.data_type.set(2)  # Set to Skypatrol if there are more BMP files
+
+            elif ((bmp_count >= bin_count) and (bmp_count >= fits_count)):
+
+                # Set to Skypatrol if there are more BMP files
+                self.data_type.set(2)  
                 self.end_frame.set(1500)
 
+            else:
+
+                # Set to RMS if there the more FITS files
+                self.data_type.set(3)  
+                self.end_frame.set(255)
+
+
         elif data_type_var == 1:
+            
             # CAMS
             self.data_type.set(1)
             self.end_frame.set(255)
 
         elif data_type_var == 2:
+            
             # Skypatrol
             self.data_type.set(2)
             self.end_frame.set(1500)
 
-        self.update_listbox(self.get_bin_list())  # Update listbox
+        elif data_type_var == 3:
+            
+            # RMS FITS
+            self.data_type.set(3)
+            self.end_frame.set(255)
+
+        # Update listbox
+        self.update_listbox(self.get_bin_list())  
 
         self.mode.set(1)
         self.filter.set(1)
@@ -1467,8 +1511,8 @@ class BinViewer(Frame):
         # Only on image change, set proper ConstrainedEntry maximum values for Video and Frame filter start and end frames, only in Captured mode
         if (self.current_image != self.old_image) and self.mode.get() == 1:
 
-            if self.data_type.get() == 1:
-                # CAMS
+            if (self.data_type.get() == 1) or (self.data_type.get() == 3):
+                # CAMS/RMS
                 # Set constrained entry max values
                 self.start_frame_entry.update_value(255)
                 self.end_frame_entry.update_value(255)
@@ -1485,11 +1529,14 @@ class BinViewer(Frame):
 
 
         if self.mode.get() == 1:
+            
             # Prepare for Captured mode
             if event == 1:
+
                 # Set only when the image is changed
                 self.start_frame.set(0)
-                if self.data_type.get() == 1:
+
+                if (self.data_type.get() == 1) or (self.data_type.get() == 3):
                     # CAMS
                     self.end_frame.set(255)
                     self.frame_scale.config(to = 255)
@@ -1507,18 +1554,23 @@ class BinViewer(Frame):
             start_frame = temp_img[1][0]  # Set start frame
             end_frame = temp_img[1][1]  # Set end frame
 
-            if self.data_type.get() == 1:
-                # Only on CAMS data type
-                start_temp = start_frame-5
-                end_temp = end_frame+5
+            if (self.data_type.get() == 1) or (self.data_type.get() == 3):
+
+                # Only on CAMS/RMS data type
+                start_temp = start_frame - 5
+                end_temp = end_frame + 5
+
             else:
                 start_temp = start_frame
                 end_temp = end_frame
 
             start_temp = 0 if start_temp<0 else start_temp
-            if self.data_type.get() == 1:
+
+            if (self.data_type.get() == 1) or (self.data_type.get() == 3):
+                
                 # CAMS data type
                 end_temp = 255 if end_temp>255 else end_temp
+            
             else: 
                 # Skypatrol data dype
                 end_temp = 1500 if end_temp>1500 else end_temp
@@ -1558,7 +1610,7 @@ class BinViewer(Frame):
                     self.start_frame.set(start_frame)
                     self.end_frame.set(end_frame)
 
-                    img_path = self.dir_path+os.sep+current_image
+                    img_path = os.path.join(self.dir_path, current_image)
 
                     if confirmation_video_app != None:
                         # Delete old confirmation app, to prepare for showing a new one
@@ -1875,7 +1927,7 @@ class BinViewer(Frame):
 
         # Extract the proper timestamp for the given data format
         if correct_status:
-            if self.data_type.get() == 1:
+            if (self.data_type.get() == 1) or (self.data_type.get() == 3):
 
                 x = current_image.split('_')
 
@@ -1884,7 +1936,7 @@ class BinViewer(Frame):
                     timestamp = x[1][0:4]+ "-" + x[1][4:6] + "-" + x[1][6:8] + " " + x[2][0:2] + ":" \
                         + x[2][2:4] + ":" + x[2][4:6] + "." + x[3] + " " + fps
 
-                # CAMS data tyoe (NEW)
+                # CAMS data type (NEW)
                 elif format_type == -1:
                     timestamp = x[2][0:4] + "-" + x[2][4:6] + "-" + x[2][6:8] + " " + x[3][0:2] + ":" + x[3][2:4] + ":" + x[3][4:6] + "." + x[4] + " " + fps
 
@@ -1896,7 +1948,7 @@ class BinViewer(Frame):
             else:
 
                 # Skypatrol data type
-                img_path = self.dir_path+os.sep+current_image
+                img_path = os.path.join(self.dir_path, current_image)
                 (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(img_path)
                 timestamp = time.strftime("%Y-%m-%d %H:%M:%S.000", time.gmtime(mtime))+" "+fps
 
@@ -2145,7 +2197,7 @@ class BinViewer(Frame):
         if save_path == '':
             return '', 0
 
-        image_list = get_processed_frames(self.dir_path+os.sep+current_image, save_path+os.sep, self.data_type.get(), flat_frame, flat_frame_scalar, dark_frame, self.start_frame.get(), self.end_frame.get(), logsort_export, no_background = no_background)
+        image_list = get_processed_frames(os.path.join(self.dir_path, current_image), save_path + os.sep, self.data_type.get(), flat_frame, flat_frame_scalar, dark_frame, self.start_frame.get(), self.end_frame.get(), logsort_export, no_background = no_background)
 
         if not logsort_export:
             tkMessageBox.showinfo("Saving progress", "Saving done!")
@@ -2273,7 +2325,7 @@ class BinViewer(Frame):
 
             line = line.replace('\n', '')
 
-            if ("FF" in line) and (".bin" in line):
+            if ("FF" in line) and ((".bin" in line) or (".fits" in line)):
                 ff_bin_list.append([line.strip()])
                 skip = 2
                 frame_list = None
@@ -2425,18 +2477,22 @@ class BinViewer(Frame):
                 self.move_top(0)
 
             self.start_frame.set(0)
-            if self.data_type.get() == 1:
+
+            if (self.data_type.get() == 1) or (self.data_type.get() == 3):
+                
                 # CAMS data type
                 self.end_frame.set(255)
                 self.frame_scale.config(to = 255)
             else:
+
                 # Skypatrol data type
                 self.end_frame.set(1500)
                 self.frame_scale.config(to = 1500)
 
         elif self.mode.get() == 2: 
+            
             # Detected mode
-            if self.data_type.get() == 1:
+            if (self.data_type.get() == 1) or (self.data_type.get() == 3):
                 # CAMS data type
 
                 # Get a list of FF*.bin files from FTPdetectinfo
@@ -3166,6 +3222,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         datatypeMenu.add_separator()
         datatypeMenu.add_checkbutton(label = "CAMS", onvalue = 1, variable = self.data_type_var, command = self.update_data_type)
         datatypeMenu.add_checkbutton(label = "Skypatrol", onvalue = 2, variable = self.data_type_var, command = self.update_data_type)
+        datatypeMenu.add_checkbutton(label = "RMS", onvalue = 3, variable = self.data_type_var, command = self.update_data_type)
         self.menuBar.add_cascade(label = "Data type", underline = 0, menu = datatypeMenu)
 
         # Confirmation menu

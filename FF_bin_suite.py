@@ -20,13 +20,18 @@ Author: Denis Vida
 Reading from FF*.bin files based on Matlab scripts by Peter S. Gural.
 """
 
-import numpy as np
-from images2gif import writeGif
+
+
 import os
+import subprocess
+
+import numpy as np
+import pyfits
 from PIL import Image as img
 from PIL import ImageFont
 from PIL import ImageDraw
-import subprocess
+
+from images2gif import writeGif
 
 
 gifsicle_name = "gifsicle.exe" #gifsicle.exe program name
@@ -99,8 +104,13 @@ def readFF(filename, datatype = 1):
         datatype: type of data to be read, 1 for CAMS, 2 for Skypatrol
     """
 
-    if datatype == 2: #Return Skypatrol BMP if datatype is set for Skypatrol
+    # Return Skypatrol BMP if datatype is set for Skypatrol
+    if datatype == 2: 
         return readSkypatrolBMP(filename)
+
+    # Return RMS fits format
+    elif datatype == 3:
+        return readFits(filename)
 
     fid = open(filename, 'rb')
     ff = ff_struct()
@@ -200,6 +210,50 @@ def readSkypatrolBMP(img_name):
     ff.avepixel = np.zeros(shape=(nrows, ncols), dtype=np.uint8)
 
     ff.adjustment_scalar = 1
+
+    return ff
+
+
+
+def readFits(filename):
+    """ Read a FF structure from a FITS file. 
+    
+    Arguments:
+        filename: [str] Name of FF*.fits file (either with FF and extension or without)
+    
+    Return:
+        [ff structure]
+
+    """
+
+    # Init an empty FF structure
+    ff = ff_struct()
+
+    fid = open(filename, "rb")
+
+    # Read in the FITS
+    hdulist = pyfits.open(fid)
+
+    # Read the header
+    head = hdulist[0].header
+
+    # Read in the data from the header
+    ff.nrows = head['NROWS']
+    ff.ncols = head['NCOLS']
+    ff.nbits = head['NBITS']
+    ff.nframes = head['NFRAMES']
+    ff.first = head['FIRST']
+    ff.camno = head['CAMNO']
+    ff.fps = head['FPS']
+
+    # Read in the image data
+    ff.maxpixel = hdulist[1].data
+    ff.maxframe = hdulist[2].data
+    ff.avepixel = hdulist[3].data
+    ff.stdpixel = hdulist[4].data
+
+    # CLose the FITS file
+    hdulist.close()
 
     return ff
 
@@ -764,8 +818,8 @@ def get_processed_frames(ff_bin, save_path = '.'+os.sep, data_type=1, Flat_frame
 
         img_path_prefix = save_path+img_name_prefix
 
-        #CAMS data type
-        if data_type == 1: 
+        # CAMS data type
+        if (data_type == 1) or (data_type == 3):
             odd_frame_img = deinterlace_array_odd(frame_img)
             saveImage(odd_frame_img, img_path_prefix+"_0dd.bmp", print_name = False, bmp_24bit = logsort_export)
             image_list.append(img_name_prefix+"_0dd.bmp")

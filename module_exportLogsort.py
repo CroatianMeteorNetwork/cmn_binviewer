@@ -109,7 +109,7 @@ def exportLogsort(dir_source, dir_dest, data_type, ff_bin, met_no, start_frame, 
             logfile_status = True
 
 
-    if FTPdetect_status and captured_stats_status and (data_type == 1):
+    if FTPdetect_status and captured_stats_status and ((data_type == 1) or (data_type == 3)):
         # CAMS processinig
 
         mkdir_p(dir_dest)
@@ -416,10 +416,11 @@ def postAnalysisFix(logsort_path, data_type):
     # Save fixed logsort
     replaceLogsort([line.split() for line in logsort_list], logsort_path, header = header)
 
-    if data_type == 1:
+    if (data_type == 1) or (data_type == 3):
+
         # CAMS processing
         # Make a dictionary for a link between FF*.bin files and fake C_ files
-        parent_path = os.path.normpath(os.path.join(logsort_path, ".."))+os.sep
+        parent_path = os.path.normpath(os.path.join(logsort_path, "..")) + os.sep
         CAMS2CMNdict = _makeCAMS2CMNdict(parent_path)
         
         if CAMS2CMNdict == False:
@@ -436,13 +437,21 @@ def postAnalysisFix(logsort_path, data_type):
         logsort_split_list.append(line)
 
         if data_type == 1:
+
             # CAMS processing
             image = line[4].split('_frame')[0]+'.bin'
             image_list.append('C_'+CAMS2CMNdict[image])
+
         elif data_type == 2:
             # Skypatrol processing
             image = line[4].split('_frame')[0]+'.bmp'
             image_list.append('C_'+image)
+
+        elif data_type == 3:
+
+            # RMS processing
+            image = line[4].split('_frame')[0] + '.fits'
+            image_list.append('C_' + CAMS2CMNdict[image])
 
     logsort_list = _replaceImages(logsort_split_list, image_list)
 

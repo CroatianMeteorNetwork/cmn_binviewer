@@ -185,7 +185,7 @@ class Confirmation:
             line = line.replace('\n', '')
 
             # Read the line with FF_bin name
-            if ("FF" in line) and (".bin" in line):
+            if ("FF" in line) and ((".bin" in line) or (".fits" in line)):
                 ff_bin_list.append([line.strip()])
                 skip = 1
                 met_no_flag = True
