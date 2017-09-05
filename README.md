@@ -18,6 +18,7 @@ To run or build from source you will need (take notice of the used versions):
 - scipy 0.14.0 (this version is strongly recommended, I also tested on 0.15.0 but it requires some tinkering with DLLs on Windows)
 - numpy 1.8.2
 - PIL (Python Image Library) - Pillow-2.5.1
+- pyfits
 
 To make a Windows exe:
 - cx_Freeze-4.3.2.win32-py2.7
