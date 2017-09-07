@@ -24,10 +24,9 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.51
+version = 2.52
 
 import os
-import io
 import sys
 import errno
 import gc
@@ -985,23 +984,26 @@ class BinViewer(Frame):
 
             dir_contents = os.listdir(self.dir_path)
 
-            if ((bin_count >= bmp_count) and (bin_count >= fits_count)) or ("FTPdetectinfo_" in dir_contents):
+            # If there is at least one FITS file inside, it's probably the RMS format
+            if fits_count:
+
+                # Set to RMS format
+                self.data_type.set(3)
+                self.end_frame.set(255)
+
+            elif (bin_count >= bmp_count) or ("FTPdetectinfo_" in dir_contents):
                 
                 # Set to CAMS if there are more bin files
                 self.data_type.set(1)  
                 self.end_frame.set(255)
 
-            elif ((bmp_count >= bin_count) and (bmp_count >= fits_count)):
+            elif (bmp_count >= bin_count):
 
                 # Set to Skypatrol if there are more BMP files
                 self.data_type.set(2)  
                 self.end_frame.set(1500)
 
-            else:
-
-                # Set to RMS if there the more FITS files
-                self.data_type.set(3)  
-                self.end_frame.set(255)
+                
 
 
         elif data_type_var == 1:
@@ -1631,7 +1633,7 @@ class BinViewer(Frame):
                             confirmation_video_app = ConfirmationVideo(confirmation_video_root) 
                             confirmation_video_app.update(img_path, current_image, int(self.meteor_no), 
                                                             self.ConfirmationInstance.FTPdetect_file_content, 
-                                                            self.fps.get(), self.data_type)
+                                                            self.fps.get(), self.data_type.get())
 
                     if self.externalVideoOn.get():
 
@@ -1650,7 +1652,7 @@ class BinViewer(Frame):
                             # Run external video
                             external_video_app = ExternalVideo(external_video_root) 
                             external_video_app.update(img_path, current_image, self.start_frame.get(), 
-                                                        self.end_frame.get(), self.fps.get(), self.data_type, 
+                                                        self.end_frame.get(), self.fps.get(), self.data_type.get(), 
                                                         dimensions, min_lvl = minv_temp, gamma = gamma_temp,
                                                         max_lvl = maxv_temp, 
                                                         external_guidelines=self.external_guidelines.get(), 
@@ -1866,8 +1868,8 @@ class BinViewer(Frame):
             limg = limg / limg.max()
 
             # Find low and high intensity percentiles
-            low = np.percentile(limg, 0.25)
-            high = np.percentile(limg, 99.5)
+            low = np.percentile(limg, 0.1)
+            high = np.percentile(limg, 99.8)
 
             # Rescale image levels with the given range
             img_array = (rescaleIntensity(limg, in_range=(low,high))*255).astype(np.uint8)
@@ -2117,7 +2119,7 @@ class BinViewer(Frame):
         dark_file = dark_file.replace("/", os.sep)
 
         if (dark_file != '') and (dark_dir!=''):
-            if make_flat_frame(dark_dir, dark_file, col_corrected = False, dark_frame = False) == False:
+            if make_flat_frame(dark_dir, dark_file, col_corrected = False, dark_frame = False, data_type=self.data_type.get()) == False:
                 tkMessageBox.showerror("Master dark frame", "The folder is empty!")
                 self.status_bar.config(text = "Master dark frame failed!")
                 return 0
@@ -2256,7 +2258,7 @@ class BinViewer(Frame):
         gamma_temp = self.gamma.get()
         maxv_temp = self.max_lvl_scale.get()
 
-        makeGIF(FF_input = current_image, start_frame = self.start_frame.get(), end_frame = self.end_frame.get(), ff_dir=self.dir_path, deinterlace = self.deinterlace.get(), print_name = self.gif_embed.get(), Flat_frame = flat_frame, Flat_frame_scalar = flat_frame_scalar, dark_frame = dark_frame, gif_name_parse = gif_path, repeat = repeat_temp, fps = self.fps.get(), minv = minv_temp, gamma = gamma_temp, maxv = maxv_temp, perfield = self.perfield_var.get())
+        makeGIF(FF_input = current_image, start_frame = self.start_frame.get(), end_frame = self.end_frame.get(), ff_dir=self.dir_path, deinterlace = self.deinterlace.get(), print_name = self.gif_embed.get(), Flat_frame = flat_frame, Flat_frame_scalar = flat_frame_scalar, dark_frame = dark_frame, gif_name_parse = gif_path, repeat = repeat_temp, fps = self.fps.get(), minv = minv_temp, gamma = gamma_temp, maxv = maxv_temp, perfield = self.perfield_var.get(), data_type=self.data_type.get())
 
         self.status_bar.config(text ="GIF done!")
 
@@ -3120,7 +3122,6 @@ class BinViewer(Frame):
             Copyright © 2016 Denis Vida
             E-mail: denis.vida@gmail.com\n
 Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
-images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden
 gifsicle: Copyright © 1997-2013 Eddie Kohler
 """)
 

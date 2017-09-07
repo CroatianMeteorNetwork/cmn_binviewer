@@ -1,2 +1,4 @@
 # Python 'compiled' files
 *.pyc
+
+build/

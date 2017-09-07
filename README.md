@@ -19,6 +19,7 @@ To run or build from source you will need (take notice of the used versions):
 - numpy 1.8.2
 - PIL (Python Image Library) - Pillow-2.5.1
 - pyfits
+- imageio
 
 To make a Windows exe:
 - cx_Freeze-4.3.2.win32-py2.7

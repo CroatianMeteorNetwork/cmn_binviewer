@@ -24,14 +24,13 @@ Reading from FF*.bin files based on Matlab scripts by Peter S. Gural.
 
 import os
 import subprocess
+import platform
 
 import numpy as np
 import pyfits
 from PIL import Image as img
 from PIL import ImageFont
 from PIL import ImageDraw
-
-from images2gif import writeGif
 
 
 gifsicle_name = "gifsicle.exe" #gifsicle.exe program name
@@ -255,6 +254,9 @@ def readFits(filename):
     # CLose the FITS file
     hdulist.close()
 
+    # Used for video brightening, when video is darker than maxpixel
+    ff.adjustment_scalar = np.mean(ff.maxpixel) / np.mean(ff.avepixel)
+
     return ff
 
 
@@ -438,7 +440,7 @@ def optimize_GIF(gif_name, runfolder = '.'):
 
 
 
-def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace = True, print_name = True, optimize = True, Flat_frame = None, Flat_frame_scalar = None, dark_frame = None, gif_name_parse = None, repeat = True, fps = 25, minv = None, gamma = None, maxv = None, perfield = False):
+def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace = True, print_name = True, optimize = True, Flat_frame = None, Flat_frame_scalar = None, dark_frame = None, gif_name_parse = None, repeat = True, fps = 25, minv = None, gamma = None, maxv = None, perfield = False, data_type=1):
     """ Makes a GIF animation for given FF_file, in given frame range (0-255).
 
     start_frame: Starting frame (default 0)
@@ -457,7 +459,10 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
     gamma: levels adjustment gamma (default None)
     maxv: levels adjustment maximum level (default None)
     perfield: if True, every frame will be split into an odd and even field (x2 more frames) (default False)
+    data_type: 1 CAMS, 2 skypatrol,, 3 RMS
     """
+
+    import imageio
 
     if not ff_dir[-1] == os.sep:
         ff_dir += os.sep
@@ -487,7 +492,7 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
             raise ValueError("Incorrect input parameters! Start frame must be before end frame and both must be withnin bounds [0, 255]")
 
         # Read FF bin
-        ffBinRead = readFF(FF_file)
+        ffBinRead = readFF(FF_file, datatype=data_type)
         
         for k in range (start_frame, end_frame+1):
             img_array = buildFF(ffBinRead, k, videoFlag = True)
@@ -536,10 +541,11 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
     if gif_name_parse != None:
         gif_name = gif_name_parse
 
-    writeGif(gif_name, images, duration=1/float(fps), dither = False, dispose = 1, subRectangles = True, repeat = repeat)
+    # Write the gif to disk
+    imageio.mimsave(gif_name, images, duration=1/float(fps), loop=int(not repeat), subrectangles=True)
     
-    #Optimize gif
-    if optimize == True:
+    # Optimize gif only under windows
+    if optimize and (platform.system() == 'Windows'):
         print ' Optimizing...'
         optimize_GIF(gif_name)
     
@@ -722,57 +728,57 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
 
 
 
-def process_avepixel(ff_bin, Flat_frame, Flat_frame_scalar, dark_frame = None, mode = 0):
-    """ Processes avepixel of a given FF*.bin file. Makes flat field division and deinterlacing.
+# def process_avepixel(ff_bin, Flat_frame, Flat_frame_scalar, dark_frame = None, mode = 0, data_type=1):
+#     """ Processes avepixel of a given FF*.bin file. Makes flat field division and deinterlacing.
 
-    ff_bin: name of FF*.bin file
-    Flat_frame: flat frame array (load flat frame or make it)
-    Flat_frame_scalar: flat frame median value (load flat frame or make it)
-    mode: 0 for division, 1 for subtraciton of flat frame"""
+#     ff_bin: name of FF*.bin file
+#     Flat_frame: flat frame array (load flat frame or make it)
+#     Flat_frame_scalar: flat frame median value (load flat frame or make it)
+#     mode: 0 for division, 1 for subtraciton of flat frame"""
 
-    if dark_frame == None:
-        try:
-            dark_frame = load_dark(flat_dir+'dark.bmp')
-        except:
-            dark_frame = np.zeros(shape=(nrows, ncols), dtype=np.int) 
+#     if dark_frame == None:
+#         try:
+#             dark_frame = load_dark(flat_dir + 'dark.bmp')
+#         except:
+#             dark_frame = np.zeros(shape=(nrows, ncols), dtype=np.int) 
 
-    img_ave = readFF(ff_bin).avepixel
+#     img_ave = readFF(ff_bin, datatype=data_type).avepixel
 
-    img_ave = img_ave.astype(np.float)
+#     img_ave = img_ave.astype(np.float)
 
-    img_ave = np.subtract(img_ave, dark_frame)
+#     img_ave = np.subtract(img_ave, dark_frame)
 
-    ave_scalar = np.mean(img_ave)
+#     ave_scalar = np.mean(img_ave)
 
-    if mode == 0: #Divide flat
+#     if mode == 0: #Divide flat
 
-        Flat_frame[Flat_frame == 0] = 1
-        ave_noflat = img_ave / Flat_frame
-        ave_noflat = np.multiply(ave_noflat, Flat_frame_scalar)
+#         Flat_frame[Flat_frame == 0] = 1
+#         ave_noflat = img_ave / Flat_frame
+#         ave_noflat = np.multiply(ave_noflat, Flat_frame_scalar)
 
-    elif mode == 1: #Subtract flat
-        ave_noflat = img_ave - Flat_frame
-        ave_noflat = add_scalar(img_ave, Flat_frame_scalar)
+#     elif mode == 1: #Subtract flat
+#         ave_noflat = img_ave - Flat_frame
+#         ave_noflat = add_scalar(img_ave, Flat_frame_scalar)
         
 
-    #print img_ave[360][89], "/", Flat_frame[360][89], "=", ave_noflat[360][89]
+#     #print img_ave[360][89], "/", Flat_frame[360][89], "=", ave_noflat[360][89]
 
-    #print ave_noflat[100][100]
+#     #print ave_noflat[100][100]
 
-    #print 'scalar', Flat_frame_scalar
+#     #print 'scalar', Flat_frame_scalar
 
 
-    ave_noflat = np.clip(ave_noflat, 0, 255)
+#     ave_noflat = np.clip(ave_noflat, 0, 255)
 
-    ave_noflat = deinterlace_blend(ave_noflat)
+#     ave_noflat = deinterlace_blend(ave_noflat)
 
-    #print ave_noflat[0][0]
+#     #print ave_noflat[0][0]
 
-    saveImage(img_ave, "1_avg.bmp", print_name = False)
-    saveImage(Flat_frame, "2_temporal_median.bmp", print_name = False)
-    saveImage(ave_noflat, "3_avg_corrected.bmp", print_name = False)
+#     saveImage(img_ave, "1_avg.bmp", print_name = False)
+#     saveImage(Flat_frame, "2_temporal_median.bmp", print_name = False)
+#     saveImage(ave_noflat, "3_avg_corrected.bmp", print_name = False)
 
-    return ave_noflat
+#     return ave_noflat
 
 
 
@@ -781,7 +787,7 @@ def get_processed_frames(ff_bin, save_path = '.'+os.sep, data_type=1, Flat_frame
 
     ff_bin: *.bin file (or Skypatrol BMP) name and path
     save_path: path where to save processed frames
-    data_type: 1 for CAMS (default), 2 for Skypatrol
+    data_type: 1 for CAMS (default), 2 for Skypatrol, 3 RMS
     Flat_frame: flat frame array (load flat frame or make it)
     Flat_frame_scalar: flat frame median value (load flat frame or make it)
     dark_frame: dark frame array
@@ -929,12 +935,13 @@ def chop_flat_processes(img_num, step = 31):
 
 
 
-def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dark_frame = None):
+def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dark_frame = None, data_type=1):
     """ Return a flat frame array and flat frame median value. Makes a flat frame by comparing given images and taking the minimum value on a given position of all images.
 
     flat_dir: directroy where FF*.bin files are held
     flat_save: name of file to be saved, dave directory is flat_dir (default: flat.bmp)
     dark_frame: array which contains dark frame (None by default, then it is read from the folder, if it exists)
+    data_type: 1 CAMS, 2 skypatrol, 3 RMS
     Lines can be vertically averaged by col_corrected = True (default)"""
 
     if not flat_dir[-1] == os.sep:
@@ -947,8 +954,10 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
         first_raw = flat_raw[0]
     except:
         return False
-    nrows = readFF(first_raw).nrows
-    ncols = readFF(first_raw).ncols
+
+    ff = readFF(first_raw, datatype=data_type)
+    nrows = ff.nrows
+    ncols = ff.ncols
 
     #print 'Making flat frame...'
     #print 'Flat frame resolution: ', nrows, ncols
@@ -967,7 +976,7 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
 
     for line in flat_raw:
 
-        flat_temp = readFF(line).avepixel
+        flat_temp = readFF(line, datatype=data_type).avepixel
         flat_temp = np.subtract(flat_temp, dark_frame)
         flat_temp = np.clip(flat_temp, 0, 255)
 
