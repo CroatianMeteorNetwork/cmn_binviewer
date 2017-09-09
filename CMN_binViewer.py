@@ -708,9 +708,6 @@ class BinViewer(Frame):
         self.temp_frame = IntVar()
         self.temp_frame.set(self.start_frame.get())
 
-        self.frame_slider_value = IntVar()
-        self.frame_slider_value.set(0)
-
         self.stop_video = BooleanVar()
         self.stop_video.set(True)
 
@@ -1825,7 +1822,7 @@ class BinViewer(Frame):
 
             self.set_timestamp(self.frame_scale.get())
             
-            self.img_name_type = 'frame_'+str(self.frame_slider_value)
+            self.img_name_type = 'frame_'+str(self.frame_scale.get())
             self.old_filter.set(7)
         
         elif self.filter.get() == 10:
