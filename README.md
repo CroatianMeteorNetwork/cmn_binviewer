@@ -10,7 +10,7 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 3. make calibration (dark, flat) frames from .bin image files
 4. perform CAMS confirmation procedure
 
-Latest Windows x86 build: https://dl.dropboxusercontent.com/u/7845267/HMM/CMN_binViewer_setup.exe
+Latest Windows x86 build: https://www.dropbox.com/s/1rvfndxtrgvvxm9/CMN_binViewer_setup.exe?dl=1
 
 To run or build from source you will need (take notice of the used versions):
 - Python 2.7.8 or later (also tested on 2.7.9)
