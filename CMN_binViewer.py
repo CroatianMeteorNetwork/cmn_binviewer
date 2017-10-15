@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.53
+version = 2.54
 
 import os
 import sys
@@ -3159,6 +3159,8 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
 
     def onExit(self):
         self.quit()
+        self.destroy()
+        sys.exit()
 
 
     def initUI(self):
@@ -3211,7 +3213,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         
         fileMenu.add_separator()
         
-        fileMenu.add_command(label="Exit", underline=0, command=self.onExit)
+        # fileMenu.add_command(label="Exit", underline=0, command=self.onExit)
         self.menuBar.add_cascade(label="File", underline=0, menu=fileMenu)  
 
         # Data type menu
@@ -3595,6 +3597,18 @@ def externalVideoInitialize(img_cols):
     external_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None) # Override close button to do nothing
     external_video_root.attributes("-toolwindow", 1)  # Remove minimize and maximize buttons
 
+
+
+def quitBinviewer():
+	""" Cleanly exits binviewer. """
+
+	root.quit()
+	root.destroy()
+	sys.exit()
+
+
+
+
 if __name__ == '__main__':
 
     # Catch unhandled exceptions in Tkinter
@@ -3635,6 +3649,9 @@ if __name__ == '__main__':
     root = Tk()
     # Set window position to the uppet-left corner
     root.geometry('+0+0')
+
+    # Add a special function which controls what happens when when the close button is pressed
+    root.protocol('WM_DELETE_WINDOW', quitBinviewer)
 
     # Set window icon
     try:
