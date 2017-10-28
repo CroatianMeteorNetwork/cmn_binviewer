@@ -29,25 +29,33 @@ version = 2.54
 import os
 import sys
 import errno
+import argparse
 import gc
 import glob
 import time
 import datetime
-import wx
+
+
 import tkFileDialog
 import tkMessageBox
 import threading
 import logging
 import logging.handlers
 import traceback
-import numpy as np
 from shutil import copy2
-from Tkinter import Tk, W, E, IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, PhotoImage, NORMAL, DISABLED, Entry, Scale, Button
+from Tkinter import Tk, W, E, IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
+    PhotoImage, NORMAL, DISABLED, Entry, Scale, Button
 import Tkinter as tk
+
+import wx
+import numpy as np
 from ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
 from PIL import Image as img
 from PIL import ImageTk
-from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_dark, load_flat, process_array, saveImage, make_flat_frame, makeGIF, get_detection_only, get_processed_frames, adjust_levels, get_FTPdetect_coordinates, markDetections, deinterlace_array_odd, deinterlace_array_even, rescaleIntensity
+
+from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_dark, load_flat, process_array, \
+    saveImage, make_flat_frame, makeGIF, get_detection_only, get_processed_frames, adjust_levels, \
+    get_FTPdetect_coordinates, markDetections, deinterlace_array_odd, deinterlace_array_even, rescaleIntensity
 from module_confirmationClass import Confirmation
 import module_exportLogsort as exportLogsort
 from module_highlightMeteorPath import highlightMeteorPath
@@ -616,10 +624,20 @@ class SuperUnbind():
 class BinViewer(Frame):
     """ Main CMN_binViewer window. 
     """
-    def __init__(self, parent):
+    def __init__(self, parent, dir_path=None, confirmation=False):
         """ Runs only when the viewer class is created (i.e. on the program startup only). 
+    
+        Arguments:
+            parent: [tk object] Tk root handle.
+
+        Keyword arguments:
+            dir_path: [str] If given, binviewer will open the given directory. None by default.
+            confirmation: [bool] If True, BinViewer will start in confirmation mode. False by default.
+
         """
+
         #parent.geometry("1366x768")
+
         Frame.__init__(self, parent, bg = global_bg)  
         parent.configure(bg = global_bg) # Set backgound color
         parent.grid_columnconfigure(0, weight=1)
@@ -797,6 +815,22 @@ class BinViewer(Frame):
 
         parent.bind("<Return>", self.copy_bin_to_sorted)
 
+
+        # Update UI changes
+        parent.update_idletasks()
+        parent.update()
+
+        # If the directory path was given, open it
+        if dir_path is not None:
+            self.askdirectory(dir_path=dir_path)
+
+
+        # Run confirmation if the flag was given
+        if confirmation:
+            self.confirmationStart()
+
+
+
     def defaultBindings(self):
         """ Default key bindings. User for program init and resetig after confirmation is done.
         """
@@ -813,6 +847,7 @@ class BinViewer(Frame):
         self.parent.bind("<Next>", self.detectedModeSet)  # Page down
         self.parent.bind("<Return>", self.copy_bin_to_sorted)  # Enter
         self.parent.bind("<Delete>", self.deinterlace_toggle)  # Deinterlace
+
 
     def readFF_decorator(self, func):
         """ Decorator used to pass self.data_type to readFF without changing all readFF statements in the code. 
@@ -1964,19 +1999,29 @@ class BinViewer(Frame):
         """ Opens a dialog for choosing a directory. 
         """
         _userCancel = ''
+
         app = wx.App()
-        dialog = wx.DirDialog(None, title, style=1 ,defaultPath=initialdir, pos = (10,10))
+
+        dialog = wx.DirDialog(None, title, style=1, defaultPath=initialdir, pos=(10, 10))
+
         if dialog.ShowModal() == wx.ID_OK:
             _selectedDir = dialog.GetPath()
             return _selectedDir
+
         else:
             dialog.Destroy()
+
         return _userCancel
 
 
-    def askdirectory(self):
-        """Returns a selected directoryname.
+    def askdirectory(self, dir_path=''):
+        """ Shows the directory dialog, open the directory in binviewer and returns a selected directoryname.
+
+        Keyword arguments:
+            dir_path: [str] Directory to open. If given, the file dialog will not be shown.
         """
+
+        self.dir_path = dir_path
 
         # If changing during confirmation
         if self.mode.get() == 3:
@@ -1984,10 +2029,9 @@ class BinViewer(Frame):
                 return 0
 
         self.filter.set(1)
+
         # Stop video every image update
         self.stop_video.set(True)
-        stop_confirmation_video = True
-        stop_external_video = True
         try:
             # Wait for the video thread to finish
             self.video_thread.join() 
@@ -1999,21 +2043,29 @@ class BinViewer(Frame):
         self.status_bar.config(text = "Opening directory...")
 
         old_dir_path = self.dir_path
+
+
+        if not self.dir_path:
         
-        # Opens the file dialog
-        self.dir_path = self.wxDirchoose(initialdir = self.dir_path, title = "Open the directory with FF*.bin files, then click OK")
+            # Opens the file dialog
+            self.dir_path = self.wxDirchoose(initialdir = self.dir_path, \
+                title = "Open the directory with FF files, then click OK")
+
 
         if self.dir_path == '':
+
             if os.path.exists(old_dir_path):
                 self.dir_path = old_dir_path
             else:
                 self.dir_path = os.getcwd()
 
-        self.update_listbox(self.get_bin_list())  # Update listbox
+        # Update listbox
+        self.update_listbox(self.get_bin_list())  
 
         self.update_data_type()
-       
-        self.parent.wm_title("CMN_binViewer: "+self.dir_path)  # Update dir label
+        
+        # Update dir label
+        self.parent.wm_title("CMN_binViewer: " + self.dir_path)  
         self.mode.set(1)
         self.filter.set(1)
         self.change_mode()
@@ -2021,6 +2073,7 @@ class BinViewer(Frame):
         self.move_top(0)  # Move listbox cursor to the top
 
         self.write_config()
+
 
     def get_bin_list(self):
         """ Get a list of FF*.bin files in a given directory.
@@ -3209,7 +3262,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
 
         # File menu
         fileMenu = Menu(self.menuBar, tearoff=0)
-        fileMenu.add_command(label = "Open FF*.bin folder", command = self.askdirectory)
+        fileMenu.add_command(label = "Open FF* folder", command = self.askdirectory)
         
         fileMenu.add_separator()
         
@@ -3570,14 +3623,14 @@ def confirmationVideoInitialize(img_cols):
 
     # Try window mondifications (works only on Windows!)
     try:
-    	# Remove minimize and maximize buttons
-    	confirmation_video_root.attributes("-toolwindow", 1)  
+        # Remove minimize and maximize buttons
+        confirmation_video_root.attributes("-toolwindow", 1)  
 
-    	# Override close button to do nothing
-    	confirmation_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None)
+        # Override close button to do nothing
+        confirmation_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None)
 
     except:
-    	pass
+        pass
 
 
 
@@ -3600,16 +3653,28 @@ def externalVideoInitialize(img_cols):
 
 
 def quitBinviewer():
-	""" Cleanly exits binviewer. """
+    """ Cleanly exits binviewer. """
 
-	root.quit()
-	root.destroy()
-	sys.exit()
+    root.quit()
+    root.destroy()
+    sys.exit()
 
 
 
 
 if __name__ == '__main__':
+
+
+    # Init argument parser
+    parser = argparse.ArgumentParser()
+
+    # Add the directory path argument
+    parser.add_argument("dir_path", help="Directory to open.", nargs='?')
+
+    # Add confirmation argument
+    parser.add_argument("-c", "--confirmation", action="store_true", help="Run program in confirmation mode right away.")
+
+    args = parser.parse_args()
 
     # Catch unhandled exceptions in Tkinter
     tk.CallWrapper = Catcher
@@ -3620,7 +3685,7 @@ if __name__ == '__main__':
         log_directory = os.getenv('APPDATA')+os.sep+log_directory+os.sep
     else:
         # For Unix
-        log_directory = os.path.expanduser(os.path.join("~", "." + log_directory))+os.sep
+        log_directory = os.path.expanduser(os.path.join("~", "." + log_directory)) + os.sep
 
 
     mkdir_p(log_directory)
@@ -3658,7 +3723,9 @@ if __name__ == '__main__':
         root.iconbitmap(r'.'+os.sep+'icon.ico')
     except:
         pass
-    app = BinViewer(root)
+
+    # Init the BinViewer UI
+    app = BinViewer(root, dir_path=args.dir_path, confirmation=args.confirmation)
     
     root.mainloop()
     
