@@ -538,7 +538,7 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
 
     print 'Making gif...'
     #Write GIF file
-    if gif_name_parse != None:
+    if gif_name_parse is not None:
         gif_name = gif_name_parse
 
     # Write the gif to disk
@@ -683,11 +683,11 @@ def max_nomean(ff_bin, Flat_frame = None, Flat_frame_scalar = None):
     """
 
     img_average = ff_bin.avepixel
-    if Flat_frame != None:
+    if Flat_frame is not None:
         img_average = np.subtract(img_average, Flat_frame) #Substract flat from average
 
     img_max = ff_bin.maxpixel
-    if Flat_frame != None:
+    if Flat_frame is not None:
         img_max = np.subtract(img_max, Flat_frame) #Flat field correction of maxpixel image
 
     img_max_noavg = deinterlace_blend(np.subtract(img_max, img_average))
@@ -736,7 +736,7 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
 #     Flat_frame_scalar: flat frame median value (load flat frame or make it)
 #     mode: 0 for division, 1 for subtraciton of flat frame"""
 
-#     if dark_frame == None:
+#     if dark_frame is None:
 #         try:
 #             dark_frame = load_dark(flat_dir + 'dark.bmp')
 #         except:
@@ -963,7 +963,7 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
     #print 'Flat frame resolution: ', nrows, ncols
 
     # Try loading dark frame, if not given
-    if dark_frame == None:
+    if dark_frame is None:
         
         try:
             dark_frame = load_dark(flat_dir + 'dark.bmp')
@@ -1339,7 +1339,7 @@ def adjust_levels(img_array, minv, gamma, maxv):
     gamma: gamma value
     maxv: maximum value of elements
     """
-    if (minv == None) and (gamma == None) and (maxv == None):
+    if (minv is None) and (gamma is None) and (maxv is None):
         return img_array #Return the same array if parameters are None
 
     minv= minv/255.0

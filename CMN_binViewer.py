@@ -1660,7 +1660,7 @@ class BinViewer(Frame):
 
                         stop_confirmation_video = False
 
-                        if not confirmation_video_root == None:
+                        if confirmation_video_root is not None:
                             # Run confirmation video
                             confirmation_video_app = ConfirmationVideo(confirmation_video_root) 
                             confirmation_video_app.update(img_path, current_image, int(self.meteor_no), 
@@ -1671,7 +1671,7 @@ class BinViewer(Frame):
 
                         stop_external_video = False
 
-                        if not external_video_root == None:
+                        if external_video_root is not None:
 
                             # Read levels and gamma values
                             minv_temp = self.min_lvl_scale.get()
@@ -1944,7 +1944,7 @@ class BinViewer(Frame):
 
         timestampLock = threading.RLock()
         timestampLock.acquire()
-        if fps == None:
+        if fps is None:
             #fps = " FFF"
             fps = ""
         else:
@@ -2925,7 +2925,7 @@ class BinViewer(Frame):
 
                 # Jump over all same images until you reach the first one of the same
                 if bottom_image != temp_image:
-                    if bottom_image == None:
+                    if bottom_image is None:
                         bottom_image = temp_image
                     else:
                         # Increment if found image that is the first detection of the same image and break
