@@ -31,6 +31,12 @@ Copyright (c) 2014-2015, Denis Vida
 * images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden
 * gifsicle: Copyright © 1997-2013 Eddie Kohler
 
+
+**Troubleshooting (Windows)**
+
+If you are getting weird "Exception code is 0xc0000005 (access violation)" errors, it was reported that the ROBOFORM password manager conflicts with binViewer and causes this error. The solution was to disable the ROBOFORM program.
+
+
 **Troubleshooting (Ubuntu/Debian)**
 
 1. ImportError: No module named wx:
