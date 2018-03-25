@@ -1093,7 +1093,7 @@ class BinViewer(Frame):
             self.hold_levels_chk_horizontal.grid_forget()
             self.hold_levels_chk.grid(row = 6, column = 1, sticky = "W", pady=5)
 
-            self.arcsinh_chk_horizontal.grid_forget()
+            self.arcsinh_chk.grid_forget()
             self.arcsinh_chk.grid(row = 6, column = 2, sticky = "W", pady=5)
             
 
@@ -1140,7 +1140,7 @@ class BinViewer(Frame):
             self.hold_levels_chk_horizontal.grid(row = 11, column = 4, columnspan = 2, sticky = "W")
 
             self.arcsinh_chk.grid_forget()
-            self.arcsinh_chk_horizontal.grid(row = 11, column = 5, columnspan = 2, sticky = "W")
+            self.arcsinh_chk.grid(row = 6, column = 1, sticky = "W", pady=5)
 
 
             self.save_panel.grid(row = 3, column = 6, rowspan = 1, sticky = "NEW", padx=2, pady=5, ipadx=3, ipady=3)
@@ -3503,7 +3503,6 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.gamma_scale.config(command = self.update_scales)
 
         self.hold_levels_chk_horizontal = Checkbutton(self.levels_label, text = 'Hold levels', variable = self.hold_levels)
-        self.arcsinh_chk_horizontal = Checkbutton(self.levels_label, text = 'Enh. stars', variable = self.arcsinh_status, command = lambda: self.update_image(0))
         # Position set in update_layout function
         
 
