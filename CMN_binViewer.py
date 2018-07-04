@@ -202,7 +202,13 @@ class Video(threading.Thread):
                 
                 self.viewer_class.img_data = img_array
 
-                temp_image = ImageTk.PhotoImage(img.fromarray(img_array)) #Prepare for showing
+                # temp_image = ImageTk.PhotoImage(img.fromarray(img_array)) #Prepare for showing
+
+                # Prepare image for showing
+                resize_fact = self.viewer_class.image_resize_factor.get()
+                temp_image = ImageTk.PhotoImage(img.fromarray(img_array).resize((img_array.shape[1]//resize_fact, img_array.shape[0]//resize_fact), img.BILINEAR))
+
+
                 self.viewer_class.imagelabel.configure(image = temp_image) #Set image to image label
                 self.viewer_class.imagelabel.image = temp_image
 
@@ -657,7 +663,12 @@ class BinViewer(Frame):
         self.layout_vertical = BooleanVar()  # Layout variable
 
         # Read configuration file
-        orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines = self.readConfig()
+        orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines, image_resize_factor = self.readConfig()
+
+
+        # Image resize factor
+        self.image_resize_factor = IntVar()
+        self.image_resize_factor.set(image_resize_factor)
 
         if orientation == 0:
             self.layout_vertical.set(False)
@@ -911,6 +922,7 @@ class BinViewer(Frame):
         external_video = 0
         edge_marker = 1
         external_guidelines = 1
+        image_resize_factor = 1
 
         read_list = (orientation, fps)
 
@@ -943,9 +955,12 @@ class BinViewer(Frame):
             if 'external_guidelines' in line[0]:
                 external_guidelines = int(line[1])
 
+            if 'image_resize_factor' in line[0]:
+                image_resize_factor = int(line[1])
+
                 
 
-        read_list = (orientation, fps, dir_path, external_video, edge_marker, external_guidelines)
+        read_list = (orientation, fps, dir_path, external_video, edge_marker, external_guidelines, image_resize_factor)
 
         return read_list
 
@@ -957,6 +972,7 @@ class BinViewer(Frame):
         external_video = int(self.externalVideoOn.get())
         edge_marker = int(self.edge_marker.get())
         external_guidelines = int(self.external_guidelines.get())
+        image_resize_factor = int(self.image_resize_factor.get())
 
         if not fps in (25, 30):
             fps = 25
@@ -970,6 +986,8 @@ class BinViewer(Frame):
 
         new_config.write("orientation = "+str(orientation)+" # 0 horizontal, 1 vertical\n")
         new_config.write("fps = "+str(fps)+"\n")
+        new_config.write("image_resize_factor = "+str(image_resize_factor)+"\n")
+
         if ('CAMS' in self.dir_path) or ('Captured' in self.dir_path) or ('Archived' in self.dir_path):
             temp_path = self.dir_path
             new_path = []
@@ -984,14 +1002,15 @@ class BinViewer(Frame):
             # Write config parameters to config.ini, but check for non-ascii characters in the directory path
             try:
                 new_config.write("dir_path = "+temp_path.strip()+"\n")
-                new_config.write("external_video = "+str(external_video)+"\n")
-                new_config.write("edge_marker = "+str(edge_marker)+"\n")
-                new_config.write("external_guidelines = "+str(external_guidelines)+"\n")
             except:
                 # Non ascii - characters found
                 tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
                 sys.exit()
                 new_config.close()
+
+                new_config.write("external_video = "+str(external_video)+"\n")
+                new_config.write("edge_marker = "+str(edge_marker)+"\n")
+                new_config.write("external_guidelines = "+str(external_guidelines)+"\n")
         
         return True
 
@@ -1926,7 +1945,12 @@ class BinViewer(Frame):
         self.current_image_cols = len(img_array[0])
 
         self.img_data = img_array
-        temp_image = ImageTk.PhotoImage(img.fromarray(img_array.astype(np.uint8)).convert("RGB")) #Prepare for showing
+        #temp_image = ImageTk.PhotoImage(img.fromarray(img_array.astype(np.uint8)).convert("RGB")) #Prepare for showing
+
+        
+        # Prepare for showing
+        resize_fact = self.image_resize_factor.get()
+        temp_image = ImageTk.PhotoImage(img.fromarray(img_array.astype(np.uint8)).resize((img_array.shape[1]//resize_fact, img_array.shape[0]//resize_fact), img.BILINEAR).convert("RGB"))
 
         self.imagelabel.configure(image = temp_image)
         self.imagelabel.image = temp_image #For reference, otherwise it doesn't work
@@ -3313,6 +3337,13 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         layoutMenu.add_checkbutton(label = "Vertical layout", onvalue = True, offvalue = False, variable = self.layout_vertical, command = self.update_layout)
         layoutMenu.add_checkbutton(label = "Horizontal layout", onvalue = False, offvalue = True, variable = self.layout_vertical, command = self.update_layout)
         self.menuBar.add_cascade(label = "Layout", menu = layoutMenu)
+
+        # Resize menu
+        resizeMenu = Menu(self.menuBar, tearoff = 0)
+        resizeMenu.add_checkbutton(label = "Image size 1x", onvalue = 1, variable = self.image_resize_factor, command = self.update_layout)
+        resizeMenu.add_checkbutton(label = "Image size 1/2x", onvalue = 2, variable = self.image_resize_factor, command = self.update_layout)
+        resizeMenu.add_checkbutton(label = "Image size 1/4x", onvalue = 4, variable = self.image_resize_factor, command = self.update_layout)
+        self.menuBar.add_cascade(label = "Resize", menu = resizeMenu)
 
         # Window menu
         self.windowMenu = Menu(self.menuBar, tearoff = 0)
