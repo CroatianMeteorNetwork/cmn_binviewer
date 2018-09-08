@@ -10,9 +10,12 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 3. make calibration (dark, flat) frames from .bin image files
 4. perform CAMS confirmation procedure
 
+**Building**
+
 Latest Windows x86 build: https://www.dropbox.com/s/ygampv3b7xgxk74/CMN_binViewer_setup.exe?dl=1
 
 Latest Windows x64 build: https://www.dropbox.com/s/44u5r9nso81wa56/CMN_binViewer_setup_x64.exe?dl=1
+
 
 To run or build from source you will need (take notice of the used versions):
 - Python 2.7.8 or later (also tested on 2.7.9)
@@ -31,7 +34,6 @@ Build scripts are provided: setup.py and COMPILE_from_setup.bat (Windows only). 
 Copyright (c) 2014-2015, Denis Vida
 * Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
 * images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden
-* gifsicle: Copyright © 1997-2013 Eddie Kohler
 
 
 **Troubleshooting (Windows)**
