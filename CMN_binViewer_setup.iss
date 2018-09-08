@@ -7,7 +7,7 @@
 
 [Setup]
 AppName=CMN_binViewer
-AppVersion=2.55
+AppVersion=2.56
 AppPublisher=Croatian Meteor Network
 AppPublisherURL=http://cmn.rgn.hr/
 DefaultDirName={pf}\CMN_binViewer
@@ -18,7 +18,7 @@ SolidCompression=yes
 OutputDir="."
 
 [Files]
-Source: ".\build\exe.win32-2.7\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: ".\build\exe.win-amd64-2.7\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; 
