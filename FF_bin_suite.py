@@ -707,13 +707,13 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
         img_array = img_array.astype(np.float)
 
         Flat_frame[Flat_frame == 0] = 1
-        img_array = img_array / Flat_frame
+        img_array = img_array / Flat_frame.astype(np.float)
         img_array = np.multiply(img_array, Flat_frame_scalar)
-
-        img_array = img_array.astype(np.uint8)
 
     if (dark_frame is not None) or (Flat_frame is not None):
         img_array = np.clip(img_array, 0, 255)
+
+    img_array = img_array.astype(np.uint8)
 
     if field == 1:  #Odd field
         img_array = deinterlace_array_odd(img_array)
