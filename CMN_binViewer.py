@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.55
+version = 2.56
 
 import os
 import sys
@@ -79,7 +79,7 @@ def mkdir_p(path):
     """
     try:
         os.makedirs(path)
-    except OSError, exc:
+    except OSError as exc:
         if exc.errno == errno.EEXIST:
             pass
         else: raise
@@ -1641,7 +1641,9 @@ class BinViewer(Frame):
 
             # Prepare for plotting detections
             ffBinName, self.meteor_no = self.confirmationListboxEntry.split()
-            detectionCoordinates, self.HT_rho, self.HT_phi = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content, ffBinName, int(self.meteor_no))
+            detectionCoordinates, self.HT_rho, \
+            	self.HT_phi = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content, \
+            	ffBinName, int(float(self.meteor_no)))
 
             # Change to Maxpixel filter after each image change
             if (self.old_confirmation_image != self.current_image) or (self.old_filter.get() in (7, 10)):
@@ -1682,8 +1684,8 @@ class BinViewer(Frame):
                         if confirmation_video_root is not None:
                             # Run confirmation video
                             confirmation_video_app = ConfirmationVideo(confirmation_video_root) 
-                            confirmation_video_app.update(img_path, current_image, int(self.meteor_no), 
-                                                            self.ConfirmationInstance.FTPdetect_file_content, 
+                            confirmation_video_app.update(img_path, current_image, int(float(self.meteor_no)), \
+                                                            self.ConfirmationInstance.FTPdetect_file_content, \
                                                             self.fps.get(), self.data_type.get())
 
                     if self.externalVideoOn.get():
