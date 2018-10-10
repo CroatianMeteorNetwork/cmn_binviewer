@@ -1082,7 +1082,7 @@ def get_FTPdetect_coordinates(FTPdetect_file_content, ff_bin, meteor_no = 1):
 
         if found_bin and not found_meteor:
             line = line.split()
-            if int(line[1]) == meteor_no:
+            if int(float(line[1])) == meteor_no:
                 found_meteor = True
             else:
                 skip_to_end = True
