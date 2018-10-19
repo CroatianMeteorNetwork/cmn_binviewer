@@ -1,7 +1,8 @@
 # CMN_binViewer
+
 CMN_binViewer -- view, organize, calibrate and confirm CAMS standard meteor data
 
-CMN_binViewer came into existence during the second part of August 2014, as a result of a dire need of new viewing software for [CAMS] (http://cams.seti.org/) and Skypatrol standard data. As the [Croatian Meteor Network] (http://cmn.rgn.hr/) grew in its demands, it became apparent that the existing solutions were not satisfactory.
+CMN_binViewer came into existence during the second part of August 2014, as a result of a dire need of new viewing software for [CAMS](http://cams.seti.org/) and Skypatrol standard data. As the [Croatian Meteor Network](http://cmn.rgn.hr/) grew in its demands, it became apparent that the existing solutions were not satisfactory.
 
 **Features:**
 
