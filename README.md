@@ -30,6 +30,31 @@ To run or build from source you will need (take notice of the used versions):
 To make a Windows exe:
 - cx_Freeze-4.3.2.win32-py2.7
 
+
+## Installing using Anaconda
+
+If you are using Anaconda, make sure to run binviewer in a Python 2 environment:
+```
+conda create --name binviewer python=2.7
+```
+
+Make sure to activate the environment every time before using it:
+
+```
+conda activate binviewer
+```
+
+And install the requirements:
+```
+conda install -y numpy scipy
+conda install -y -c anaconda wxpython 
+conda install -y -c sherpa pyfits
+conda install -y -c conda-forge pillow imageio
+```
+
+
+## Build scripts
+
 Build scripts are provided: setup.py and COMPILE_from_setup.bat (Windows only). Making GIFs won't work on any other OS than Windows, as the software relies on gifsicle.exe to compress GIF animations.
 
 Copyright (c) 2014-2015, Denis Vida
