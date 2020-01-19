@@ -24,7 +24,7 @@ To run or build from source you will need (take notice of the used versions):
 - scipy 0.14.0 (this version is strongly recommended, I also tested on 0.15.0 but it requires some tinkering with DLLs on Windows)
 - numpy 1.8.2
 - PIL (Python Image Library) - Pillow-2.5.1
-- pyfits
+- astropy
 - imageio
 
 To make a Windows exe:
@@ -48,7 +48,7 @@ And install the requirements:
 ```
 conda install -y numpy scipy
 conda install -y -c anaconda wxpython 
-conda install -y -c sherpa pyfits
+conda install -y astropy
 conda install -y -c conda-forge pillow imageio
 ```
 

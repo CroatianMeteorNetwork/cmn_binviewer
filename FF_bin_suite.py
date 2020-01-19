@@ -27,7 +27,7 @@ import subprocess
 import platform
 
 import numpy as np
-import pyfits
+import astropy.io.fits as pyfits
 from PIL import Image as img
 from PIL import ImageFont
 from PIL import ImageDraw
