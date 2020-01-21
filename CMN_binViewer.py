@@ -24,7 +24,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.56
+version = 2.57
 
 import os
 import sys
@@ -206,6 +206,7 @@ class Video(threading.Thread):
 
                 # Prepare image for showing
                 resize_fact = self.viewer_class.image_resize_factor.get()
+                if resize_fact <= 0: resize_fact = 1
                 temp_image = ImageTk.PhotoImage(img.fromarray(img_array).resize((img_array.shape[1]//resize_fact, img_array.shape[0]//resize_fact), img.BILINEAR))
 
 
@@ -1952,6 +1953,7 @@ class BinViewer(Frame):
         
         # Prepare for showing
         resize_fact = self.image_resize_factor.get()
+        if resize_fact <= 0: resize_fact = 1
         temp_image = ImageTk.PhotoImage(img.fromarray(img_array.astype(np.uint8)).resize((img_array.shape[1]//resize_fact, img_array.shape[0]//resize_fact), img.BILINEAR).convert("RGB"))
 
         self.imagelabel.configure(image = temp_image)
