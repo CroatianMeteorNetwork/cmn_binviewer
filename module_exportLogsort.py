@@ -14,7 +14,7 @@ def mkdir_p(path):
     """
     try:
         os.makedirs(path)
-    except OSError, exc:
+    except (OSError, exc):
         if exc.errno == errno.EEXIST:
             pass
         else: raise
@@ -26,7 +26,7 @@ def _makeCAMS2CMNdict(dir_path):
     dict_path = dir_path+capturestats_dict_name
 
     if not os.path.exists(dict_path):
-        print 'No '+capturestats_dict_name+' found!'
+        print ('No '+capturestats_dict_name+' found!')
         return False
 
     cams2cmn_dict = {}
@@ -121,9 +121,9 @@ def exportLogsort(dir_source, dir_dest, data_type, ff_bin, met_no, start_frame, 
         run_cams2cmn(dir_dest, 6, skip_calstars = True)
 
         # Convert MTPdetections to LOG_SORT.INF
-        print 'Converting MTPdetections to LOG_SORT.INF...'
+        print ('Converting MTPdetections to LOG_SORT.INF...')
         mtp2detected(dir_dest, date = _getRecordDate(dir_dest + capturestats_name))
-        print 'Done!'
+        print ('Done!')
 
         cams2cmn_dict = _makeCAMS2CMNdict(dir_dest)
 
@@ -242,7 +242,7 @@ def _adjustLogsort(logsort_list, fps, start_frame, end_frame):
 
     else:
         # Too little frames for detection-based logsort, use the generic one!
-        print 'Too little frames for detection-based logsort, use the generic one!'
+        print ('Too little frames for detection-based logsort, use the generic one!')
         return False
 
     time_difference = 1.0 / (fps * ((int(interlaced) + 1)))

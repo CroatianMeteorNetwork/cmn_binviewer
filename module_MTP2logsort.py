@@ -102,7 +102,7 @@ def mtp2detected(directory, date=None): #Function for making fake detected files
             try:
                 exptime=float(logfile_line1.split(':')[1]) #Getting exp time
             except:
-                print 'Error in logfile!!!'
+                print ('Error in logfile!!!')
                 return False
             
             for event in mtp_detections_list:

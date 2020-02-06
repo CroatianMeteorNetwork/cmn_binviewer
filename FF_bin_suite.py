@@ -354,7 +354,7 @@ def deinterlace_array_odd(ff_image):
     deinterlaced_image = np.copy(ff_image) #deepcopy ff_image to new array
     old_row = ff_image[0]
     for row_num in range(len(ff_image)):
-        if truth_gen.next() == True:
+        if truth_gen.__next__() == True:
             deinterlaced_image[row_num] = np.copy(ff_image[row_num])
             old_row = ff_image[row_num]
         else:
@@ -373,7 +373,7 @@ def deinterlace_array_even(ff_image):
     deinterlaced_image = np.copy(ff_image) #deepcopy ff_image to new array
     old_row = ff_image[-1]
     for row_num in reversed(range(len(ff_image))):
-        if truth_gen.next() == True:
+        if truth_gen.__next__() == True:
             deinterlaced_image[row_num] = np.copy(ff_image[row_num])
             old_row = ff_image[row_num]
         else:
@@ -536,7 +536,7 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
     #   saveImage(k, str(c)+".jpg")
     #   c +=1
 
-    print 'Making gif...'
+    print ('Making gif...')
     #Write GIF file
     if gif_name_parse is not None:
         gif_name = gif_name_parse
@@ -546,10 +546,10 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
     
     # Optimize gif only under windows
     if optimize and (platform.system() == 'Windows'):
-        print ' Optimizing...'
+        print (' Optimizing...')
         optimize_GIF(gif_name)
     
-    print 'Done!'
+    print ('Done!')
 
     os.chdir(run_dir)
 
@@ -622,7 +622,7 @@ def make_night_GIF(night_dir, minimum_frames = 10):
         night_dir += os.sep
 
     if not os.path.exists(night_dir):
-        print "Folder "+night_dir+" not found!"
+        print ("Folder "+night_dir+" not found!")
         return False
 
     FTPdetect_file = ""
@@ -637,10 +637,10 @@ def make_night_GIF(night_dir, minimum_frames = 10):
     os.chdir(night_dir)
 
     if FTPdetect_file != "":
-        print 'Processing folder: '+night_dir
+        print ('Processing folder: '+night_dir)
         makeGIF(get_FTPdetect_frames(FTPdetect_file, minimum_frames), ff_dir = night_dir)
     else:
-        print "FTPdetectinfo file in "+night_dir+" not found!"
+        print ("FTPdetectinfo file in "+night_dir+" not found!")
         return False
 
     os.chdir(old_dir)
@@ -997,7 +997,7 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
         Flat_frame = blend_median(*temp_arrays)
 
     elif len(flat_arrays) > 1024:
-        print 'No more than 1024 images can be processed into a flat field!!!'
+        print ('No more than 1024 images can be processed into a flat field!!!')
     else:
         Flat_frame = blend_median(*flat_arrays) #Median
 

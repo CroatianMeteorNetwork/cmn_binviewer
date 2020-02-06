@@ -36,20 +36,20 @@ import time
 import datetime
 
 
-import tkFileDialog
-import tkMessageBox
+import tkinter.filedialog as tkFileDialog
+import tkinter.messagebox as tkMessageBox
 import threading
 import logging
 import logging.handlers
 import traceback
 from shutil import copy2
-from Tkinter import Tk, W, E, IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
+from tkinter import Tk, W, E, IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
     PhotoImage, NORMAL, DISABLED, Entry, Scale, Button
-import Tkinter as tk
+import tkinter as tk
 
 import wx
 import numpy as np
-from ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
+from tkinter.ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
 from PIL import Image as img
 from PIL import ImageTk
 
@@ -3618,10 +3618,12 @@ class Catcher:
     def __call__(self, *args):
         try:
             if self.subst:
-                args = apply(self.subst, args)
-            return apply(self.func, args)
-        except SystemExit, msg:
-            raise SystemExit, msg
+                #args = apply(self.subst, args)
+                args = self.subst(*args) # python3
+            #return apply(self.func, args)
+            return self.func(*args)
+        except (SystemExit):
+            raise (SystemExit)
         except:
             log.critical(traceback.format_exc())
             tkMessageBox.showerror("Unhandled exception", "An unhandled exception has occured!\nPlease see the last logfile in the "+log_directory+" for more information!")
