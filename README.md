@@ -13,9 +13,11 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 
 **Building**
 
-Latest Windows x86 build: https://www.dropbox.com/s/ygampv3b7xgxk74/CMN_binViewer_setup.exe?dl=1
+Latest Windows x64 build (recommended): https://www.dropbox.com/s/44u5r9nso81wa56/CMN_binViewer_setup_x64.exe?dl=1
 
-Latest Windows x64 build: https://www.dropbox.com/s/44u5r9nso81wa56/CMN_binViewer_setup_x64.exe?dl=1
+Latest Windows x86 build (legacy): https://www.dropbox.com/s/ygampv3b7xgxk74/CMN_binViewer_setup.exe?dl=1
+
+
 
 
 To run or build from source you will need (take notice of the used versions):
