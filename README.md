@@ -32,6 +32,26 @@ To run or build from source you will need (take notice of the used versions):
 To make a Windows exe:
 - cx_Freeze-4.3.2.win32-py2.7
 
+## Installing on Raspberry Pi
+
+Run in terminal:
+
+```
+sudo apt-get update
+sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev
+pip install wxPython
+```
+
+Then clone this repository:
+```
+git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
+```
+
+Finally, enter the code directory and run the program:
+```
+cd cmn_binviewer
+python CMN_binViewer.py
+```
 
 ## Installing using Anaconda
 
