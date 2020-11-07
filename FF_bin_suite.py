@@ -21,13 +21,16 @@ Reading from FF*.bin files based on Matlab scripts by Peter S. Gural.
 """
 
 
-
+from __future__ import print_function
 import os
 import subprocess
 import platform
 
 import numpy as np
-import pyfits
+try:
+    import pyfits
+except:
+    import astropy.io.fits as pyfits
 from PIL import Image as img
 from PIL import ImageFont
 from PIL import ImageDraw
@@ -96,8 +99,8 @@ def readFF(filename, datatype = 1):
     """Function for reading FF bin files.
 
     Returns a structure that allows access to individual parameters of the image
-    e.g. print readFF("FF300_20140802_205545_600_0090624.bin").nrows to print out the number of rows
-    e.g. print readFF("FF300_20140802_205545_600_0090624.bin").maxpixel to print out the array of nrows*ncols numbers which represent the image
+    e.g. print(readFF("FF300_20140802_205545_600_0090624.bin").nrows) to print out the number of rows
+    e.g. print(readFF("FF300_20140802_205545_600_0090624.bin").maxpixel) to print out the array of nrows*ncols numbers which represent the image
     INPUTS:
         filename: file name from the file to be read
         datatype: type of data to be read, 1 for CAMS, 2 for Skypatrol
@@ -430,7 +433,7 @@ def optimize_GIF(gif_name, runfolder = '.'):
 
     #args = " -O3 --use-colormap grey --colors 256 \"" + gif_name + "\" -o \"" + gif_name + "\""
     args = ['-O3', '--use-colormap', 'grey', '--colors', '256', gif_name, '-o', gif_name]
-    #print args
+    #print(args)
     startupinfo = subprocess.STARTUPINFO()
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     subprocess.Popen([gifsicle_name] + args, startupinfo=startupinfo).wait()
@@ -536,7 +539,7 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
     #   saveImage(k, str(c)+".jpg")
     #   c +=1
 
-    print 'Making gif...'
+    print('Making gif...')
     #Write GIF file
     if gif_name_parse is not None:
         gif_name = gif_name_parse
@@ -546,10 +549,10 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
     
     # Optimize gif only under windows
     if optimize and (platform.system() == 'Windows'):
-        print ' Optimizing...'
+        print(' Optimizing...')
         optimize_GIF(gif_name)
     
-    print 'Done!'
+    print('Done!')
 
     os.chdir(run_dir)
 
@@ -569,7 +572,7 @@ def get_FTPdetect_frames(FTPdetect_file, minimum_frames):
         max_frame = int(float(frame_list[-1]))
         ff_bin_list[-1].append((min_frame, max_frame))
 
-        #print len(frame_list)
+        #print(len(frame_list))
     
     if not os.path.isfile(FTPdetect_file):
         return False
@@ -584,7 +587,7 @@ def get_FTPdetect_frames(FTPdetect_file, minimum_frames):
     skip = 0
     frame_list = []
     for line in FTPdetect_file_content[12:]:
-        #print line
+        #print(line)
 
         if ("-------------------------------------------------------" in line):
             get_frames(frame_list)
@@ -622,7 +625,7 @@ def make_night_GIF(night_dir, minimum_frames = 10):
         night_dir += os.sep
 
     if not os.path.exists(night_dir):
-        print "Folder "+night_dir+" not found!"
+        print("Folder "+night_dir+" not found!")
         return False
 
     FTPdetect_file = ""
@@ -631,16 +634,16 @@ def make_night_GIF(night_dir, minimum_frames = 10):
             FTPdetect_file = line
             break
 
-    #print get_FTPdetect_frames(FTPdetect_file, minimum_frames)
+    #print(get_FTPdetect_frames(FTPdetect_file, minimum_frames))
 
     old_dir = os.getcwd()
     os.chdir(night_dir)
 
     if FTPdetect_file != "":
-        print 'Processing folder: '+night_dir
+        print('Processing folder: '+night_dir)
         makeGIF(get_FTPdetect_frames(FTPdetect_file, minimum_frames), ff_dir = night_dir)
     else:
-        print "FTPdetectinfo file in "+night_dir+" not found!"
+        print("FTPdetectinfo file in "+night_dir+" not found!")
         return False
 
     os.chdir(old_dir)
@@ -761,18 +764,18 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
 #         ave_noflat = add_scalar(img_ave, Flat_frame_scalar)
         
 
-#     #print img_ave[360][89], "/", Flat_frame[360][89], "=", ave_noflat[360][89]
+#     #print(img_ave[360][89], "/", Flat_frame[360][89], "=", ave_noflat[360][89])
 
-#     #print ave_noflat[100][100]
+#     #print(ave_noflat[100][100])
 
-#     #print 'scalar', Flat_frame_scalar
+#     #print('scalar', Flat_frame_scalar)
 
 
 #     ave_noflat = np.clip(ave_noflat, 0, 255)
 
 #     ave_noflat = deinterlace_blend(ave_noflat)
 
-#     #print ave_noflat[0][0]
+#     #print(ave_noflat[0][0])
 
 #     saveImage(img_ave, "1_avg.bmp", print_name = False)
 #     saveImage(Flat_frame, "2_temporal_median.bmp", print_name = False)
@@ -959,8 +962,8 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
     nrows = ff.nrows
     ncols = ff.ncols
 
-    #print 'Making flat frame...'
-    #print 'Flat frame resolution: ', nrows, ncols
+    #print('Making flat frame...')
+    #print('Flat frame resolution: ', nrows, ncols)
 
     # Try loading dark frame, if not given
     if dark_frame is None:
@@ -997,7 +1000,7 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
         Flat_frame = blend_median(*temp_arrays)
 
     elif len(flat_arrays) > 1024:
-        print 'No more than 1024 images can be processed into a flat field!!!'
+        print('No more than 1024 images can be processed into a flat field!!!')
     else:
         Flat_frame = blend_median(*flat_arrays) #Median
 
@@ -1010,7 +1013,7 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
         flat_save = flat_dir + flat_save
 
     saveImage(Flat_frame, flat_save, print_name = False)
-    #print 'Done!'
+    #print('Done!')
     return Flat_frame, Flat_frame_scalar
 
 
@@ -1221,7 +1224,7 @@ def find_crop_size(crop_array, size = 15):
 #         ff_path += os.sep
 
 #     if not os.path.exists(ff_path):
-#         print ff_path+" does not exist!"
+#         print(ff_path+" does not exist!")
 #         return False
 
 #     FTPdetect_file = ""
@@ -1236,7 +1239,7 @@ def find_crop_size(crop_array, size = 15):
 #     saveImage(max_nomean_array, ff_bin_path+"_max_nomean.bmp", print_name = False)
 
 #     max_bg_mean = int(np.mean(max_nomean_array))
-#     print max_bg_mean
+#     print(max_bg_mean)
 
 #     ###MUST MAKE SOME SORT OF IMAGE MASKING HERE!!!!!!!!!!!!! Problem is when meteor is in the corner, then the lightcurve will be calculated with dark corners during rotation
 
@@ -1260,7 +1263,7 @@ def find_crop_size(crop_array, size = 15):
 #     rotated_img = rotate(max_nomean_array, -rot_angle+90, order = 0)
 
 #     rotated_img[rotated_img < 3] = max_bg_mean #Polish out the black edges
-#     #print rotated_img
+#     #print(rotated_img)
 
 #     max_nomean_croped = rotated_img[first_y:last_y, first_x:last_x] #Crop out the image array
 
@@ -1553,7 +1556,7 @@ def cropDetectionSegments(ffBinRead, segmentList, cropSize = 64):
     #start = time.clock()
     #leveled = adjust_levels(img_max, 23, 1.36, 102)
     #end = time.clock()
-    #print end-start
+    #print(end-start)
     #saveImage(leveled, flat_dir+img_name+"_leveled.bmp", print_name = False)
 
     #saveImage(colorize_maxframe(flat_dir+img_name), 'color_test_fast.bmp', print_name = False)
@@ -1566,7 +1569,7 @@ def cropDetectionSegments(ffBinRead, segmentList, cropSize = 64):
     #       saveImage(readFF(flat_dir+bin).maxpixel, flat_dir+bin+'_raw_max.bmp', print_name = False)
     #       saveImage(readFF(flat_dir+bin).avepixel, flat_dir+bin+'_raw_ave.bmp', print_name = False)
     #       saveImage(process_avepixel(flat_dir+bin, Flat_frame, Flat_frame_scalar), flat_dir+bin+'_processed.bmp', print_name = False)
-    #       print bin, 'processed!'
+    #       print(bin, 'processed!')
 
     #img_dir = "C:\\Users\\Admin\\Desktop\\155mm_FlatTests\\CalibImg\\"
     #img_name = "FF451_20140816_212455_562_0055808.bin"
@@ -1626,7 +1629,7 @@ def cropDetectionSegments(ffBinRead, segmentList, cropSize = 64):
 
     # #Process all images
     # for ff_file_name in flat_raw:
-    #   print "Processing "+ff_file_name
+    #   print("Processing "+ff_file_name)
     #   ff_file_image = readFF(ff_file_name).maxpixel
 
     #   sub_img = np.subtract(ff_file_image, Flat_frame) #Substract the Flat_frame from raw image
