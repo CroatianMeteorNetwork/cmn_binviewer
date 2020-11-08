@@ -84,9 +84,9 @@ def truth_generator():
     """ Generates True/False intermittently by calling:
 
     gen = truth_generator() 
-    gen.next() #True
-    gen.next() #False
-    gen.next() #True
+    next(gen) #True
+    next(gen) #False
+    next(gen) #True
     ...
      """
     while 1:
@@ -357,7 +357,7 @@ def deinterlace_array_odd(ff_image):
     deinterlaced_image = np.copy(ff_image) #deepcopy ff_image to new array
     old_row = ff_image[0]
     for row_num in range(len(ff_image)):
-        if truth_gen.next() == True:
+        if next(truth_gen) == True:
             deinterlaced_image[row_num] = np.copy(ff_image[row_num])
             old_row = ff_image[row_num]
         else:
@@ -376,7 +376,7 @@ def deinterlace_array_even(ff_image):
     deinterlaced_image = np.copy(ff_image) #deepcopy ff_image to new array
     old_row = ff_image[-1]
     for row_num in reversed(range(len(ff_image))):
-        if truth_gen.next() == True:
+        if next(truth_gen) == True:
             deinterlaced_image[row_num] = np.copy(ff_image[row_num])
             old_row = ff_image[row_num]
         else:
