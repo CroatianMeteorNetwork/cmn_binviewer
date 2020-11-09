@@ -47,7 +47,6 @@ from Tkinter import Tk, W, E, IntVar, BooleanVar, StringVar, DoubleVar, Frame, A
     PhotoImage, NORMAL, DISABLED, Entry, Scale, Button
 import Tkinter as tk
 
-import wx
 import numpy as np
 from ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
 from PIL import Image as img
@@ -2023,23 +2022,14 @@ class BinViewer(Frame):
         self.timestamp_label.configure(text = timestamp)
         timestampLock.release()
 
-    def wxDirchoose(self, initialdir, title, _selectedDir = '.'):
-        """ Opens a dialog for choosing a directory. 
+    def tkDirchoose(self, initialdir, title, _selectedDir = '.'):
+        """ Opens a dialog for choosing a directory.
         """
-        _userCancel = ''
+        root = tk.Tk()
+        root.withdraw()
+        folder_selected = tk.filedialog.askdirectory() # Returns empty string in case of cancel
 
-        app = wx.App()
-
-        dialog = wx.DirDialog(None, title, style=1, defaultPath=initialdir, pos=(10, 10))
-
-        if dialog.ShowModal() == wx.ID_OK:
-            _selectedDir = dialog.GetPath()
-            return _selectedDir
-
-        else:
-            dialog.Destroy()
-
-        return _userCancel
+        return folder_selected
 
 
     def askdirectory(self, dir_path=''):
@@ -2076,7 +2066,7 @@ class BinViewer(Frame):
         if not self.dir_path:
         
             # Opens the file dialog
-            self.dir_path = self.wxDirchoose(initialdir = self.dir_path, \
+            self.dir_path = self.tkDirchoose(initialdir = self.dir_path, \
                 title = "Open the directory with FF files, then click OK")
 
 
@@ -2180,8 +2170,8 @@ class BinViewer(Frame):
         """ Makes the master dark frame.
         """
         self.status_bar.config(text = "Making master dark frame, please wait...")
-        
-        dark_dir = self.wxDirchoose(initialdir = self.dir_path, title = "Open the directory with dark frames, then click OK")
+
+        dark_dir = self.tkDirchoose(initialdir = self.dir_path, title = "Open the directory with dark frames, then click OK")
 
         if dark_dir == '': 
             self.status_bar.config(text = "Master dark frame making aborted!")
@@ -2214,8 +2204,8 @@ class BinViewer(Frame):
 
         self.status_bar.config(text = "Making master flat frame, please wait...")
         
-        flat_dir = self.wxDirchoose(initialdir = self.dir_path, title = "Open the directory with flat frames, then click OK")
-        if flat_dir == '': 
+        flat_dir = self.tkDirchoose(initialdir = self.dir_path, title = "Open the directory with flat frames, then click OK")
+        if flat_dir == '':
             self.status_bar.config(text = "Master flat frame making aborted!")
             return 0
         flat_file = tkFileDialog.asksaveasfilename(initialdir = flat_dir, parent = self.parent, title = "Choose the master flat file name", initialfile = "flat.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
@@ -2271,7 +2261,7 @@ class BinViewer(Frame):
 
         self.status_bar.config(text ="Processing individual frames and fields...")
 
-        save_path = self.wxDirchoose(initialdir = self.dir_path, title = "Open the directory where you want to save individual frames by field, then click OK")
+        save_path = self.tkDirchoose(initialdir = self.dir_path, title = "Open the directory where you want to save individual frames by field, then click OK")
 
         # Abort the process if no path is chosen
         if save_path == '':
