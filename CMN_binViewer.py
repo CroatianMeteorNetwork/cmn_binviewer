@@ -2802,7 +2802,7 @@ class BinViewer(Frame):
             for index, entry in enumerate(self.listbox.get(0, END)):
                 entry = entry.split()
                 if entry[0] != color_old_image:
-                    current_color = colorGen.next()
+                    current_color = next(colorGen)
                     color_old_image = entry[0]
 
                 self.listbox.itemconfig(index, fg = current_color)
