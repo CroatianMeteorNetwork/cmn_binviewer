@@ -1159,8 +1159,8 @@ def markDetections(image_array, detections_array, edge_marker=True, edge_thickne
         x_min, x_max = minimumEdge(min(x), max(x)+1, img_x_size, edge_minimum)
         y_min, y_max = minimumEdge(min(y), max(y)+1, img_y_size, edge_minimum)
 
-        x_range = range(x_min, x_max)
-        y_range = range(y_min, y_max)
+        x_range = list(range(x_min, x_max))
+        y_range = list(range(y_min, y_max))
 
         x_edge = []
         y_edge = []
