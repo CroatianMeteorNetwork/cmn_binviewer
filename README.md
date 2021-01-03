@@ -13,9 +13,11 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 
 **Building**
 
-Latest Windows x86 build: https://www.dropbox.com/s/ygampv3b7xgxk74/CMN_binViewer_setup.exe?dl=1
+Latest Windows x64 build (recommended): https://www.dropbox.com/s/44u5r9nso81wa56/CMN_binViewer_setup_x64.exe?dl=1
 
-Latest Windows x64 build: https://www.dropbox.com/s/44u5r9nso81wa56/CMN_binViewer_setup_x64.exe?dl=1
+Latest Windows x86 build (legacy): https://www.dropbox.com/s/ygampv3b7xgxk74/CMN_binViewer_setup.exe?dl=1
+
+
 
 
 To run or build from source you will need (take notice of the used versions):
@@ -30,6 +32,26 @@ To run or build from source you will need (take notice of the used versions):
 To make a Windows exe:
 - cx_Freeze-4.3.2.win32-py2.7
 
+## Installing on Raspberry Pi
+
+Run in terminal:
+
+```
+sudo apt-get update
+sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev
+pip install wxPython
+```
+
+Then clone this repository:
+```
+git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
+```
+
+Finally, enter the code directory and run the program:
+```
+cd cmn_binviewer
+python CMN_binViewer.py
+```
 
 ## Installing using Anaconda
 
