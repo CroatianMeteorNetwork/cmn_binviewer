@@ -59,7 +59,7 @@ import traceback
 from shutil import copy2
 
 try:
-    from tkinter import IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
+    from Tkinter import IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
         PhotoImage, NORMAL, DISABLED, Entry, Scale, Button
 except ImportError:
     from tkinter import IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
