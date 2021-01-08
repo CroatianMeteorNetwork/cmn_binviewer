@@ -22,12 +22,11 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-import os
 
 class Confirmation:
     """ Class for managing the CAMS confirmation procedure. 
     """
-    def __init__(self, img_list, FTP_detect_file, confirmationDirectory, minimum_frames):
+    def __init__(self, img_list, FTP_detect_file, confirmationDirectory, rejectionDirectory, minimum_frames):
         """ Inputs:
             img_list: a list of *.bins e.g. [FF451_20140819_015438_468_0513536.bin, FF451_20140819_013439_953_0483584.bin, FF451_20140819_005544_078_0425216.bin] 
             FTP_detect_file: full path to the FTPdetectinfo file 
@@ -41,6 +40,7 @@ class Confirmation:
         self.FTPdetect_file_content = self.removeLastSeparator(self.FTPdetect_file_content)
 
         self.confirmationDirectory = confirmationDirectory
+        self.rejectionDirectory = rejectionDirectory
 
         # Check if all *.bin images in the folder correspond to the images in FTPdetectinfo file
 
@@ -107,7 +107,7 @@ class Confirmation:
         """ Export confirmed meteors to new FTPdetectinfo file (return a list of file rows). 
         """
 
-        met_count = self.FTPdetect_file_content[0]
+        # met_count = self.FTPdetect_file_content[0]
         header = self.FTPdetect_file_content[1:11]
 
         header[3] = "FF  folder = " + self.confirmationDirectory+'\n'
@@ -171,6 +171,8 @@ class Confirmation:
         met_no_flag = False
         met_no = "XXXX"
         frame_list = []
+        HT_rho=0
+        HT_phi=0
         for line in self.FTPdetect_file_content[12:]:
             #print line
 
@@ -194,7 +196,7 @@ class Confirmation:
                 continue
 
             # Read meteor info from the second event line
-            if met_no_flag == True:
+            if met_no_flag is True:
                 line = line.split()
                 met_no = line[1]
                 HT_rho = line[8]

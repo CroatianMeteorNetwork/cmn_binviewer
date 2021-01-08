@@ -83,4 +83,3 @@ def highlightMeteorPath(input_img, rho, phi, path_width=20):
 
 # plt.imshow(img, cmap = "gray")
 # plt.show()
-
