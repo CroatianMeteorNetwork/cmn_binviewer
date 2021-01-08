@@ -1,0 +1,11 @@
+#
+#######requirements.txt #######
+#
+astropy
+numpy
+pillow
+wxPython
+tk
+imageio
+scipy
+cx_Freeze
