@@ -7,6 +7,6 @@ pillow
 wxPython
 tk
 scipy
-cx_Freeze ; sys_platform == "Windows"
+cx_Freeze ; sys_platform == "win32"
 imageio==2.6 ; python_version < "3.0"
 imageio>=2.7 ; python_version >= "3.0"
