@@ -673,6 +673,11 @@ class BinViewer(Frame):
         """
 
         # parent.geometry("1366x768")
+        # strip off terminal slash if present
+
+        if dir_path is not None:
+            if dir_path[-1] == os.sep:
+                dir_path = dir_path[:-1]
 
         Frame.__init__(self, parent, bg = global_bg)
         parent.configure(bg = global_bg)  # Set backgound color
@@ -3069,7 +3074,7 @@ class BinViewer(Frame):
                 if ('FTPdetectinfo' in dir_file) and file_ext == '.txt' and not ('_original' in file_name):
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, "".join(dir_file.split('.')[:-1]) + '_pre-confirmation.txt'))
                     continue
-                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json'):
+                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json') or dir_file == '.config':
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, dir_file))
 
             # Write the filtered FTPdetectinfo content to a new file
@@ -3087,7 +3092,7 @@ class BinViewer(Frame):
                     copy2(os.path.join(self.dir_path, ff_bin), os.path.join(self.ConfirmationInstance.rejectionDirectory, ff_bin))
             for dir_file in dir_contents:
                 file_name, file_ext = os.path.splitext(dir_file)
-                if file_ext in ('.txt', '.json'):
+                if file_ext in ('.txt', '.json') or dir_file == '.config':
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.rejectionDirectory, dir_file))
 
         tkMessageBox.showinfo("Confirmation", "Confirmation statistics:\n  Confirmed: " + str(confirmed_count) + "\n  Rejected: " + str(rejected_count) + "\n  Unchecked: " + str(unchecked_count))
