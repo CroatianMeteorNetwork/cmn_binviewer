@@ -3081,8 +3081,8 @@ class BinViewer(Frame):
 
         # Copy rejected images and original ftpdetectinfo
         if len(rejected_files):
+            dir_contents = os.listdir(self.dir_path)
             for ff_bin in rejected_files:
-                dir_contents = os.listdir(self.dir_path)
                 if ff_bin in dir_contents:
                     copy2(os.path.join(self.dir_path, ff_bin), os.path.join(self.ConfirmationInstance.rejectionDirectory, ff_bin))
             for dir_file in dir_contents:
