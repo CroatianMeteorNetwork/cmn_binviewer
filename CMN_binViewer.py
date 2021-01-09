@@ -3085,7 +3085,8 @@ class BinViewer(Frame):
                 dir_contents = os.listdir(self.dir_path)
                 if ff_bin in dir_contents:
                     copy2(os.path.join(self.dir_path, ff_bin), os.path.join(self.ConfirmationInstance.rejectionDirectory, ff_bin))
-                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json'):
+            for dir_file in dir_contents:
+                if file_ext in ('.txt', '.json'):
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.rejectionDirectory, dir_file))
 
         tkMessageBox.showinfo("Confirmation", "Confirmation statistics:\n  Confirmed: " + str(confirmed_count) + "\n  Rejected: " + str(rejected_count) + "\n  Unchecked: " + str(unchecked_count))
