@@ -43,6 +43,7 @@ font_name = "COUR.TTF"
 
 run_dir = os.path.abspath(".")
 
+
 class ff_struct:
     """ Default structure for a FF*.bin file.
     """
@@ -469,21 +470,18 @@ def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace =
 
     import imageio
 
-    if not ff_dir[-1] == os.sep:
-        ff_dir += os.sep
-
     os.chdir(ff_dir)
 
     images = []
 
-    #Check if FF_file is just one of a list of files with start - end frames.
+    # Check if FF_file is just one of a list of files with start - end frames.
+    # six.string_types includes both str and unicode types. 
     if isinstance(FF_input, six.string_types): 
-        # python2 strings could be either string or unicode
         ff_list = [[FF_input, (start_frame, end_frame)]]
-        gif_name = FF_input.split('.')[0]+"fr_"+str(start_frame)+"-"+str(end_frame)+".gif"
+        gif_name = FF_input.split('.')[0] + "fr_" + str(start_frame) + "-" + str(end_frame) + ".gif"
         FF_input = ff_list
     else:
-        gif_name = ff_dir+"_".join(FF_input[0][0].split('.')[0].split("_")[0:2])+"_all-night.gif"
+        gif_name = ff_dir + "_".join(FF_input[0][0].split('.')[0].split("_")[0:2]) + "_all-night.gif"
     
     for entry in FF_input:
         FF_file = entry[0]
@@ -920,7 +918,7 @@ def blend_median(*args):
     elif sort_len == 2:
         return (sort[0] + sort[1])/2
 
-    middle = sort_len/2
+    middle = int(sort_len/2)
     
     return sort[middle]
 
@@ -942,18 +940,19 @@ def chop_flat_processes(img_num, step = 31):
 def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dark_frame = None, data_type=1):
     """ Return a flat frame array and flat frame median value. Makes a flat frame by comparing given images and taking the minimum value on a given position of all images.
 
-    flat_dir: directroy where FF*.bin files are held
+    flat_dir: directory where FF*.bin files are held
     flat_save: name of file to be saved, dave directory is flat_dir (default: flat.bmp)
     dark_frame: array which contains dark frame (None by default, then it is read from the folder, if it exists)
     data_type: 1 CAMS, 2 skypatrol, 3 RMS
     Lines can be vertically averaged by col_corrected = True (default)"""
 
-    if not flat_dir[-1] == os.sep:
-        flat_dir += os.sep
+    # I assume CAMS creates FF.bin files, but RMS creates FF.fits ones
+    filetype = 'bin'
+    if data_type == 3:
+        filetype = 'fits'
 
-    flat_raw = [flat_dir + line for line in os.listdir(flat_dir) if ('FF' in line) and (line.split('.')[-1] == 'bin')]
+    flat_raw = [os.path.join(flat_dir, line) for line in os.listdir(flat_dir) if ('FF' in line) and (line.split('.')[-1] == filetype)]
     flat_arrays = []
-
     try:
         first_raw = flat_raw[0]
     except:
@@ -1011,7 +1010,7 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
         Flat_frame = fixFlat_frame(Flat_frame, Flat_frame_scalar) #Average each column in Flat_frame (expells hot pixels from Flat_frame)
 
     if os.sep not in flat_save:
-        flat_save = flat_dir + flat_save
+        flat_save = os.path.join(flat_dir, flat_save)
 
     saveImage(Flat_frame, flat_save, print_name = False)
     #print('Done!')
@@ -1124,7 +1123,7 @@ def markDetections(image_array, detections_array, edge_marker=True, edge_thickne
             var_min, var_max = var_max, var_min
 
         if abs(var_max - var_min) < edge_minimum:
-            var_diff = int((edge_minimum - abs(var_max - var_min)) /2 )
+            var_diff = int((edge_minimum - abs(var_max - var_min)) /2)
             var_max += var_diff
 
             var_min -= var_diff

@@ -91,6 +91,7 @@ log_directory = 'CMN_binViewer_logs'
 
 tempImage = 0
 
+
 def getSysTime():
     if sys.version_info[0] < 3:
         return time.clock()
@@ -244,7 +245,8 @@ class Video(threading.Thread):
 
             # Set timestamp
             # print('4')
-            self.viewer_class.set_timestamp(temp_frame, image_name=self.img_path.split(os.sep)[-1])
+            _, img_name = os.path.split(self.img_path)
+            self.viewer_class.set_timestamp(temp_frame, image_name=img_name)
             # print('5')
 
             # Sleep for 1/FPS with corrected time for script running time
@@ -1028,10 +1030,10 @@ class BinViewer(Frame):
                 tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
                 sys.exit()
 
-            new_config.write("external_video = " + str(external_video) + "\n")
-            new_config.write("edge_marker = " + str(edge_marker) + "\n")
-            new_config.write("external_guidelines = " + str(external_guidelines) + "\n")
-            new_config.close()
+        new_config.write("external_video = " + str(external_video) + "\n")
+        new_config.write("edge_marker = " + str(edge_marker) + "\n")
+        new_config.write("external_guidelines = " + str(external_guidelines) + "\n")
+        new_config.close()
 
         return True
 
@@ -1062,37 +1064,46 @@ class BinViewer(Frame):
                 # Set to RMS format
                 self.data_type.set(3)
                 self.end_frame.set(255)
+                logimportstate='disabled'
 
             elif (bin_count >= bmp_count) or ("FTPdetectinfo_" in dir_contents):
 
                 # Set to CAMS if there are more bin files
                 self.data_type.set(1)
                 self.end_frame.set(255)
+                logimportstate='normal'
 
             elif (bmp_count >= bin_count):
 
                 # Set to Skypatrol if there are more BMP files
                 self.data_type.set(2)
                 self.end_frame.set(1500)
+                logimportstate='normal'
 
         elif data_type_var == 1:
 
             # CAMS
             self.data_type.set(1)
             self.end_frame.set(255)
+            logimportstate='normal'
 
         elif data_type_var == 2:
 
             # Skypatrol
             self.data_type.set(2)
             self.end_frame.set(1500)
+            logimportstate='normal'
 
         elif data_type_var == 3:
 
             # RMS FITS
             self.data_type.set(3)
             self.end_frame.set(255)
+            logimportstate='disabled'
 
+        # LOG
+        self.fireballMenu.entryconfig("Export detection with background stars", state=logimportstate)
+        self.fireballMenu.entryconfig("Export detection without background stars", state=logimportstate)
         # Update listbox
         self.update_listbox(self.get_bin_list())
 
@@ -1454,7 +1465,6 @@ class BinViewer(Frame):
         """ Opens dark frame via file dialog.
         """
         temp_dark = tkFileDialog.askopenfilename(initialdir = self.dir_path, parent = self.parent, title = "Choose dark frame file", initialfile = "dark.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
-        temp_dark = temp_dark.replace('/', os.sep)
         if temp_dark != '':
             self.dark_name.set(temp_dark)
 
@@ -1462,7 +1472,6 @@ class BinViewer(Frame):
         """ Opens flat frame via file dialog.
         """
         temp_flat = tkFileDialog.askopenfilename(initialdir = self.dir_path, parent = self.parent, title = "Choose flat frame file", initialfile = "flat.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
-        temp_flat = temp_flat.replace('/', os.sep)
         if temp_flat != '':
             self.flat_name.set(temp_flat)
 
@@ -1553,8 +1562,6 @@ class BinViewer(Frame):
         global stop_external_video, external_video_app, external_video_root
 
         updateImageLock = threading.RLock()
-
-        self.dir_path = self.dir_path.replace('/', os.sep)
 
         self.status_bar.config(text = "View image")  # Update status bar
         updateImageLock.acquire()
@@ -1728,7 +1735,7 @@ class BinViewer(Frame):
                 self.old_confirmation_image = self.current_image
             self.current_image, self.meteor_no = self.current_image.split()[0:2]
 
-        img_path = self.dir_path + os.sep + self.current_image
+        img_path = os.path.join(self.dir_path, self.current_image)
 
         if not os.path.isfile(img_path):
             tkMessageBox.showerror("File error", "File not found:\n" + img_path)
@@ -1740,10 +1747,10 @@ class BinViewer(Frame):
 
         # Do if the dark frame is on
         if self.dark_status.get() is True:
-            if os.sep not in self.dark_name.get():
-                dark_path = self.dir_path + os.sep + self.dark_name.get()
-            else:
-                dark_path = self.dark_name.get()
+            dark_path = self.dark_name.get()
+            pth, dark_fname = os.path.split(dark_path)
+            if pth == '':
+                dark_path = os.path.join(self.dir_path, dark_fname)
 
             try:
                 dark_frame = load_dark(dark_path)
@@ -1753,11 +1760,10 @@ class BinViewer(Frame):
 
         # Do if the flat frame is on
         if self.flat_status.get() is True:
-            if os.sep not in self.flat_name.get():
-                flat_path = self.dir_path + os.sep + self.flat_name.get()
-            else:
-                flat_path = self.flat_name.get()
-
+            flat_path = self.flat_name.get()
+            pth, flat_fname = os.path.split(flat_path)
+            if pth == '':
+                flat_path = os.path.join(self.dir_path, flat_fname)
             try:
                 flat_frame, flat_frame_scalar = load_flat(flat_path)
             except:
@@ -2141,7 +2147,7 @@ class BinViewer(Frame):
             return 0
 
         img_name = current_image + "_" + self.img_name_type + '.' + extension
-        img_path = self.dir_path + os.sep + img_name
+        img_path = os.path.join(self.dir_path, img_name)
         if save_as is True:
             img_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save as...", initialfile = img_name, defaultextension = "." + extension)
             if img_path == '':
@@ -2157,10 +2163,10 @@ class BinViewer(Frame):
         if self.current_image == '':
             return 0
 
-        if (os.sep in self.sort_folder_path.get()) or ('/' in self.sort_folder_path.get()):
-            sorted_dir = self.sort_folder_path.get()
-        else:
-            sorted_dir = self.dir_path + os.sep + self.sort_folder_path.get()
+        sorted_dir = self.sort_folder_path.get()
+        pth, sort_pth = os.path.split(sorted_dir)
+        if pth == '':
+            sorted_dir = os.path.join(self.dir_path, sort_pth)
 
         try:
             mkdir_p(sorted_dir)
@@ -2180,7 +2186,11 @@ class BinViewer(Frame):
         """Opens current directory in windows explorer.
         """
 
-        sorted_directory = os.path.join(self.dir_path, self.sort_folder_path.get())
+        sorted_directory = self.sort_folder_path.get()
+        pth, sort_pth = os.path.split(sorted_directory)
+        if pth == '':
+            sorted_directory = os.path.join(self.dir_path, sort_pth)
+
         try:
             os.startfile(sorted_directory)
         except:
@@ -2207,9 +2217,6 @@ class BinViewer(Frame):
         if dark_file == '':
             self.status_bar.config(text = "Master dark frame making aborted!")
             return 0
-
-        dark_dir = dark_dir.replace("/", os.sep)
-        dark_file = dark_file.replace("/", os.sep)
 
         if (dark_file != '') and (dark_dir != ''):
             if make_flat_frame(dark_dir, dark_file, col_corrected = False, dark_frame = False, data_type=self.data_type.get()) is False:
@@ -2238,16 +2245,14 @@ class BinViewer(Frame):
             self.status_bar.config(text = "Master flat frame making aborted!")
             return 0
 
-        flat_dir = flat_dir.replace("/", os.sep)
-        flat_file = flat_file.replace("/", os.sep)
-
         dark_file = tkFileDialog.askopenfilename(initialdir = flat_dir, parent = self.parent, title = "OPTIONAL: Choose dark frame, if any. Click cancel for no dark frame.", initialfile = "dark.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
 
         if dark_file != '':
             dark_frame = load_dark(dark_file)
         else:
             dark_frame = False
-        if make_flat_frame(flat_dir, flat_file, col_corrected = False, dark_frame = dark_frame) is False:
+
+        if make_flat_frame(flat_dir, flat_file, col_corrected = False, dark_frame = dark_frame, data_type=self.data_type.get()) is False:
             tkMessageBox.showerror("Master flat frame", "The folder is empty!")
             self.status_bar.config(text = "Master flat frame failed!")
             return 0
@@ -2290,7 +2295,7 @@ class BinViewer(Frame):
         if save_path == '':
             return '', 0
 
-        image_list = get_processed_frames(os.path.join(self.dir_path, current_image), save_path + os.sep, self.data_type.get(), flat_frame, flat_frame_scalar, dark_frame, self.start_frame.get(), self.end_frame.get(), logsort_export, no_background = no_background)
+        image_list = get_processed_frames(os.path.join(self.dir_path, current_image), save_path, self.data_type.get(), flat_frame, flat_frame_scalar, dark_frame, self.start_frame.get(), self.end_frame.get(), logsort_export, no_background = no_background)
 
         if not logsort_export:
             tkMessageBox.showinfo("Saving progress", "Saving done!")
@@ -2330,7 +2335,7 @@ class BinViewer(Frame):
 
         gif_name = current_image.split('.')[0] + "fr_" + str(self.start_frame.get()) + "-" + str(self.end_frame.get()) + ".gif"
 
-        gif_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save GIF animation", initialfile = gif_name, defaultextension = ".gif").replace("/", os.sep)
+        gif_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save GIF animation", initialfile = gif_name, defaultextension = ".gif")
 
         # Abort GIF making if no file is chosen
         if gif_path == '':
@@ -2390,7 +2395,7 @@ class BinViewer(Frame):
             return False
         ftpdetect_file = ftpdetect_file[0]
         try:
-            FTPdetect_file_content = open(os.path.join(self.dir_path, ftpdetect_file, 'r')).readlines()
+            FTPdetect_file_content = open(os.path.join(self.dir_path, ftpdetect_file), 'r').readlines()
         except:
             tkMessageBox.showerror("File error", "Could not open file: " + ftpdetect_file)
             return False
@@ -2677,7 +2682,8 @@ class BinViewer(Frame):
         confirmationDirectoryName = "ConfirmedFiles"
         rejectionDirectoryName = "RejectedFiles"
 
-        upDir = self.dir_path.split(os.sep)[-2]
+        upDir, nightDir = os.path.split(self.dir_path)
+        up2Dir, upDir = os.path.split(upDir)
         if upDir == "CapturedFiles":
             if not tkMessageBox.askyesno("Directory name", "Are you sure you want to do confirmation on CapturedFiles?"):
                 return 0
@@ -2685,12 +2691,10 @@ class BinViewer(Frame):
             tkMessageBox.showerror("Directory error", "You can only do confirmation in ArchivedFiles or CapturedFiles directory!")
             return 0
 
-        nightDir = self.dir_path.split(os.sep)[-1]
-
-        confirmationDirectory = (os.sep).join(self.dir_path.split(os.sep)[:-2] + [confirmationDirectoryName, nightDir])
+        confirmationDirectory = os.path.join(up2Dir, confirmationDirectoryName, nightDir)
         mkdir_p(confirmationDirectory)
 
-        rejectionDirectory = (os.sep).join(self.dir_path.split(os.sep)[:-2] + [rejectionDirectoryName, nightDir])
+        rejectionDirectory = os.path.join(up2Dir, rejectionDirectoryName, nightDir)
         mkdir_p(rejectionDirectory)
 
         image_list = []
@@ -3090,6 +3094,8 @@ class BinViewer(Frame):
                 dir_contents = os.listdir(self.dir_path)
                 if ff_bin in dir_contents:
                     copy2(os.path.join(self.dir_path, ff_bin), os.path.join(self.ConfirmationInstance.rejectionDirectory, ff_bin))
+                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json'):
+                    copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.rejectionDirectory, dir_file))
 
         tkMessageBox.showinfo("Confirmation", "Confirmation statistics:\n  Confirmed: " + str(confirmed_count) + "\n  Rejected: " + str(rejected_count) + "\n  Unchecked: " + str(unchecked_count))
 
@@ -3162,7 +3168,7 @@ class BinViewer(Frame):
             if save_path == '':
                 return False
 
-            if exportLogsort.exportLogsort(self.dir_path + os.sep, save_path + os.sep, self.data_type.get(), self.current_image, self.meteor_no, self.start_frame.get(), self.end_frame.get(), self.fps.get(), image_list) is False:
+            if exportLogsort.exportLogsort(self.dir_path, save_path, self.data_type.get(), self.current_image, self.meteor_no, self.start_frame.get(), self.end_frame.get(), self.fps.get(), image_list) is False:
                 tkMessageBox.showerror("Logsort export error", "Required files (FTPdetectinfo, CapturedStats or logfile.txt) were not found in the given folder!")
 
         else:
@@ -3293,6 +3299,8 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         fileMenu.add_command(label = "Open FF* folder", command = self.askdirectory)
 
         fileMenu.add_separator()
+        fileMenu.add_command(label="Exit", command=quitBinviewer)
+        # fileMenu.add_separator()
 
         # fileMenu.add_command(label="Exit", underline=0, command=self.onExit)
         self.menuBar.add_cascade(label="File", underline=0, menu=fileMenu)
@@ -3329,12 +3337,12 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.menuBar.add_cascade(label="Process", underline=0, menu=processMenu)
 
         # Fireball menu
-        fireballMenu = Menu(self.menuBar, tearoff = 0)
-        fireballMenu.add_command(label = "Export detection with background stars", command = lambda: self.exportFireballData(no_background = False))
-        fireballMenu.add_command(label = "Export detection without background stars", command = lambda: self.exportFireballData(no_background = True))
-        fireballMenu.add_separator()
-        fireballMenu.add_command(label = "Postprocess LOG_SORT.INF", command = self.postprocessLogsort)
-        self.menuBar.add_cascade(label="Fireball", underline=0, menu=fireballMenu)
+        self.fireballMenu = Menu(self.menuBar, tearoff = 0)
+        self.fireballMenu.add_command(label = "Export detection with background stars", command = lambda: self.exportFireballData(no_background = False))
+        self.fireballMenu.add_command(label = "Export detection without background stars", command = lambda: self.exportFireballData(no_background = True))
+        self.fireballMenu.add_separator()
+        self.fireballMenu.add_command(label = "Postprocess LOG_SORT.INF", command = self.postprocessLogsort)
+        self.menuBar.add_cascade(label="Fireball", underline=0, menu=self.fireballMenu)
 
         # Layout menu
         layoutMenu = Menu(self.menuBar, tearoff = 0)
@@ -3747,7 +3755,6 @@ if __name__ == '__main__':
 
     # Set window icon
     try:
-        # root.iconbitmap(r'.'+os.sep+'icon.ico')
         root.iconbitmap(os.path.join('.', 'icon.ico'))
     except:
         pass
