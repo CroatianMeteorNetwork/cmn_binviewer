@@ -191,7 +191,6 @@ class Video(threading.Thread):
         self._stop_event.set()
 
     def run(self):
-        print('starting video')
 
         temp_frame = self.temp_frame
         start_frame = self.start_frame
@@ -767,9 +766,6 @@ class BinViewer(Frame):
 
         self.temp_frame = IntVar()
         self.temp_frame.set(self.start_frame.get())
-
-#        self.stop_video = BooleanVar()
-#        self.stop_video.set(True)
 
         self.stop_confirmation_video = BooleanVar()
         self.stop_confirmation_video.set(True)
@@ -1545,8 +1541,6 @@ class BinViewer(Frame):
         """ Updates the current image on the screen.
         """
 
-#        self.stop_video.set(True)  # Stop video every image update
-
         # Skip updating image when key is being held down
         if self.fast_img_change:
             return 0
@@ -1574,7 +1568,7 @@ class BinViewer(Frame):
         updateImageLock.release()
 
         try:
-            print('stopping video thread')
+            print('update_image: stopping video thread')
             self.video_thread.stop()
             print('waiting')
             self.video_thread.join()  # Wait for the video thread to finish
@@ -1918,7 +1912,6 @@ class BinViewer(Frame):
             self.gamma_scale.config(state = DISABLED)
 
             self.temp_frame.set(self.start_frame.get())  # Set temporary frame to start frame
-#            self.stop_video.set(False)  # Set "stop video" flag to False -> video will run
 
             self.video_thread = Video(app, img_path)  # Create video object, pass binViewer class (app) to video object
             self.video_thread.daemon = True
@@ -2081,9 +2074,7 @@ class BinViewer(Frame):
         self.filter.set(1)
 
         # Stop video every image update
-#        self.stop_video.set(True)
         try:
-            print('stopping video')
             self.video_thread.stop()
             # Wait for the video thread to finish
             print('waiting')
