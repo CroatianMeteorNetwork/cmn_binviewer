@@ -1,11 +1,12 @@
 #
-#######requirements.txt #######
+####### requirements.txt #######
 #
 astropy
 numpy
 pillow
 wxPython
 tk
-imageio
 scipy
 cx_Freeze
+imageio==2.6 ; python_version < 3.0
+imageio>=2.7 ; python_version >= 3.0
