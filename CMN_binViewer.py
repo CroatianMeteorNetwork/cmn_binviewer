@@ -3086,6 +3086,7 @@ class BinViewer(Frame):
                 if ff_bin in dir_contents:
                     copy2(os.path.join(self.dir_path, ff_bin), os.path.join(self.ConfirmationInstance.rejectionDirectory, ff_bin))
             for dir_file in dir_contents:
+                file_name, file_ext = os.path.splitext(dir_file)
                 if file_ext in ('.txt', '.json'):
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.rejectionDirectory, dir_file))
 
