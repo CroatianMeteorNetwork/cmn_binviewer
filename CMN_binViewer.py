@@ -32,6 +32,7 @@ import gc
 import glob
 import time
 import datetime
+import subprocess
 
 # python 2/3 compatability
 if sys.version_info[0] < 3:
@@ -2186,15 +2187,23 @@ class BinViewer(Frame):
         pth, sort_pth = os.path.split(sorted_directory)
         if pth == '':
             sorted_directory = os.path.join(self.dir_path, sort_pth)
-
         try:
-            os.startfile(sorted_directory)
+            if os.platform == 'win32':
+                os.startfile(sorted_directory)
+            else:
+                opener ="open" if sys.platform == "darwin" else "xdg-open"
+                subprocess.call(opener, sorted_directory)
         except:
             try:
-                os.startfile(self.dir_path)
+                if os.platform == 'win32':
+                    os.startfile(self.dir_path)
+                else:
+                    opener ="open" if sys.platform == "darwin" else "xdg-open"
+                    subprocess.call(opener, self.dir_path)
             except:
                 tkMessageBox.showerror("Path not found", "Sorted folder is not created!")
                 return 1
+
         return 0
 
     def make_master_dark(self):
