@@ -2188,14 +2188,14 @@ class BinViewer(Frame):
         if pth == '':
             sorted_directory = os.path.join(self.dir_path, sort_pth)
         try:
-            if os.platform == 'win32':
+            if sys.platform == 'win32':
                 os.startfile(sorted_directory)
             else:
                 opener ="open" if sys.platform == "darwin" else "xdg-open"
                 subprocess.call(opener, sorted_directory)
         except:
             try:
-                if os.platform == 'win32':
+                if sys.platform == 'win32':
                     os.startfile(self.dir_path)
                 else:
                     opener ="open" if sys.platform == "darwin" else "xdg-open"
