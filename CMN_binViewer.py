@@ -3255,7 +3255,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
     def onExit(self):
         self.quit()
         self.destroy()
-        #sys.exit(0)
+        #sys.exit(0)  # not required as self.destroy() will properly exit the app.
 
     def initUI(self):
         """ Initialize GUI elements.
@@ -3700,7 +3700,7 @@ def quitBinviewer():
 
     root.quit()
     root.destroy()
-    #sys.exit(0)
+    #sys.exit(0)  # not required as self.destroy() will properly exit the app.
 
 
 if __name__ == '__main__':
