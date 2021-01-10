@@ -2192,14 +2192,14 @@ class BinViewer(Frame):
                 os.startfile(sorted_directory)
             else:
                 opener ="open" if sys.platform == "darwin" else "xdg-open"
-                subprocess.call(opener, sorted_directory)
+                subprocess.call([opener, sorted_directory])
         except:
             try:
                 if sys.platform == 'win32':
                     os.startfile(self.dir_path)
                 else:
                     opener ="open" if sys.platform == "darwin" else "xdg-open"
-                    subprocess.call(opener, self.dir_path)
+                    subprocess.call([opener, self.dir_path])
             except:
                 tkMessageBox.showerror("Path not found", "Sorted folder is not created!")
                 return 1
