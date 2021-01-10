@@ -7,34 +7,91 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 **Features:**
 
 1. view CAMS standard and Skypatrol standard image files in multiple filters
-2. view reconstructed video from .bin image files
-3. make calibration (dark, flat) frames from .bin image files
+2. view reconstructed video from .bin or .fits image files
+3. make calibration (dark, flat) frames from .bin or .fits image files
 4. perform CAMS confirmation procedure
 
 **Building**
 
-Latest Windows x86 build: https://www.dropbox.com/s/ygampv3b7xgxk74/CMN_binViewer_setup.exe?dl=1
+Latest Windows x64 build (recommended): https://www.dropbox.com/s/44u5r9nso81wa56/CMN_binViewer_setup_x64.exe?dl=1
 
-Latest Windows x64 build: https://www.dropbox.com/s/44u5r9nso81wa56/CMN_binViewer_setup_x64.exe?dl=1
+Latest Windows x86 build (legacy): https://www.dropbox.com/s/ygampv3b7xgxk74/CMN_binViewer_setup.exe?dl=1
 
 
-To run or build from source you will need (take notice of the used versions):
-- Python 2.7.8 or later (also tested on 2.7.9)
-- wxPython 3.0.2.0
-- scipy 0.14.0 (this version is strongly recommended, I also tested on 0.15.0 but it requires some tinkering with DLLs on Windows)
-- numpy 1.8.2
-- PIL (Python Image Library) - Pillow-2.5.1
-- pyfits
-- imageio
+## Installing on Raspberry Pi
 
-To make a Windows exe:
-- cx_Freeze-4.3.2.win32-py2.7
+Run in terminal:
 
-Build scripts are provided: setup.py and COMPILE_from_setup.bat (Windows only). Making GIFs won't work on any other OS than Windows, as the software relies on gifsicle.exe to compress GIF animations.
+```
+sudo apt-get update
+sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev
+
+Now create a virtual environment, activate it, and install the libraries:
+---
+virtualenv -p python3 ~/vBinviewer
+source ~/vBinviewer/bin/activate
+pip -y install -r requirements.txt
+```
+
+Then clone this repository:
+```
+git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
+```
+
+Finally, enter the code directory activate your virtual environment and run the program:
+```
+cd cmn_binviewer
+source ~/vBinviewer/bin/activate
+python CMN_binViewer.py
+
+```
+Potential issues: 
+If python3 isn't available, you can try python2.7 instead when creating the virtualenv
+If you get an out of memory error while installing the libraries, use
+TMPDIR=~/tmp pip -y install -r requirements.txt
+
+
+## Installing using Anaconda (Windows, Linux or other platforms)
+
+If you are using Anaconda:
+First open a terminal, or a Windows command or powershell prompt then:
+
+Create a virtual environment
+```
+conda create --name binviewer python=3
+
+```
+
+Activate the environment and install the libraries:
+
+```
+conda activate binviewer
+pip install -y -r requirements.txt
+
+```
+Then clone this repository:
+```
+git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
+
+--- 
+Then run the application :
+---
+cd cmn_binviewer
+conda activate binviewer
+python CMN_binViewer.py
+
+
+## Build scripts
+
+Build scripts are provided for building a Windows exe - setup.py and COMPILE_from_setup.bat. 
+To build under windows, create a suitable virtual environment and clone the repository as above,
+then activate the virtualenv and run "COMPILE_from_setup.bat"
+
 
 Copyright (c) 2014-2015, Denis Vida
 * Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
 * images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden
+* further contributions by Mark McIntyre, 2021
 
 
 **Troubleshooting (Windows)**

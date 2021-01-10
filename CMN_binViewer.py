@@ -1030,7 +1030,7 @@ class BinViewer(Frame):
             except:
                 # Non ascii - characters found
                 tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
-                sys.exit()
+                sys.exit(0)
 
         new_config.write("external_video = " + str(external_video) + "\n")
         new_config.write("edge_marker = " + str(edge_marker) + "\n")
@@ -3255,7 +3255,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
     def onExit(self):
         self.quit()
         self.destroy()
-        sys.exit()
+        sys.exit(0)
 
     def initUI(self):
         """ Initialize GUI elements.
@@ -3639,7 +3639,7 @@ class Catcher:
         except:
             log.critical(traceback.format_exc())
             tkMessageBox.showerror("Unhandled exception", "An unhandled exception has occured!\nPlease see the last logfile in the " + log_directory + " for more information!")
-            sys.exit()
+            sys.exit(0)
 
 
 # Confirmation video global variables
@@ -3700,7 +3700,7 @@ def quitBinviewer():
 
     root.quit()
     root.destroy()
-    sys.exit()
+    sys.exit(0)
 
 
 if __name__ == '__main__':
