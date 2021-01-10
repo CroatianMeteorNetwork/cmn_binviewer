@@ -3742,11 +3742,12 @@ if __name__ == '__main__':
 
     # Initialize main window
     root = tk.Tk()
-    # Set window position to the uppet-left corner
-    # root.geometry('+0+0')
-    # w, h = root.winfo_screenwidth(), root.winfo_screenheight()-30
-    # root.geometry("%dx%d+0+0" % (w, h))
-    root.wm_state('zoomed')
+    # Set window position and size
+
+    if sys.platform == 'win32':
+        root.wm_state('zoomed')
+    else:
+        root.geometry('+0+0')
 
     # Add a special function which controls what happens when when the close button is pressed
     root.protocol('WM_DELETE_WINDOW', quitBinviewer)
