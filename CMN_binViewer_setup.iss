@@ -20,6 +20,7 @@ OutputBaseFilename=CMN_binViewer-setup64
 
 [Files]
 Source: ".\build\exe.win-amd64-3.8\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: ".\build\exe.win-amd64-3.8\config.ini"; DestDir: "{app}"; Permissions: users-modify
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; 
