@@ -70,8 +70,8 @@ And install the requirements:
 ```
 conda install numpy scipy
 conda install -c anaconda wxpython 
-conda install -c sherpa pyfits
 conda install -c conda-forge pillow imageio
+pip install pyfits
 ```
 
 
