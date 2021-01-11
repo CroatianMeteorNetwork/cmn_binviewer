@@ -68,10 +68,10 @@ conda activate binviewer
 
 And install the requirements:
 ```
-conda install -y numpy scipy
-conda install -y -c anaconda wxpython 
-conda install -y -c sherpa pyfits
-conda install -y -c conda-forge pillow imageio
+conda install numpy scipy
+conda install -c anaconda wxpython 
+conda install -c sherpa pyfits
+conda install -c conda-forge pillow imageio
 ```
 
 
