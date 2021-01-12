@@ -67,8 +67,9 @@ from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_da
     saveImage, make_flat_frame, makeGIF, get_detection_only, get_processed_frames, adjust_levels, \
     get_FTPdetect_coordinates, markDetections, deinterlace_array_odd, deinterlace_array_even, rescaleIntensity
 from module_confirmationClass import Confirmation
-import module_exportLogsort as exportLogsort
+# import module_exportLogsort as exportLogsort
 from module_highlightMeteorPath import highlightMeteorPath
+from module_CAMS2CMN import convert_rmsftp_to_cams
 
 version = 3.00  # python 2 and 3 compatability
 
@@ -703,6 +704,8 @@ class BinViewer(Frame):
         # Image resize factor
         self.image_resize_factor = IntVar()
         self.image_resize_factor.set(image_resize_factor)
+        self.prev_resize_factor = IntVar()
+        self.prev_resize_factor.set(image_resize_factor)
 
         if orientation == 0:
             self.layout_vertical.set(False)
@@ -822,6 +825,7 @@ class BinViewer(Frame):
 
         # Fast image change flag
         self.fast_img_change = False
+
 
         # Misc
         global readFF
@@ -1066,46 +1070,37 @@ class BinViewer(Frame):
                 # Set to RMS format
                 self.data_type.set(3)
                 self.end_frame.set(255)
-                logimportstate='disabled'
 
             elif (bin_count >= bmp_count) or ("FTPdetectinfo_" in dir_contents):
 
                 # Set to CAMS if there are more bin files
                 self.data_type.set(1)
                 self.end_frame.set(255)
-                logimportstate='normal'
 
             elif (bmp_count >= bin_count):
 
                 # Set to Skypatrol if there are more BMP files
                 self.data_type.set(2)
                 self.end_frame.set(1500)
-                logimportstate='normal'
 
         elif data_type_var == 1:
 
             # CAMS
             self.data_type.set(1)
             self.end_frame.set(255)
-            logimportstate='normal'
 
         elif data_type_var == 2:
 
             # Skypatrol
             self.data_type.set(2)
             self.end_frame.set(1500)
-            logimportstate='normal'
 
         elif data_type_var == 3:
 
             # RMS FITS
             self.data_type.set(3)
             self.end_frame.set(255)
-            logimportstate='disabled'
 
-        # LOG
-        self.fireballMenu.entryconfig("Export detection with background stars", state=logimportstate)
-        self.fireballMenu.entryconfig("Export detection without background stars", state=logimportstate)
         # Update listbox
         self.update_listbox(self.get_bin_list())
 
@@ -1201,6 +1196,11 @@ class BinViewer(Frame):
             self.gif_make_btn.grid(row = 13, column = 4, rowspan = 2, columnspan = 2, sticky = "EW", padx=2, pady=5)
 
             self.frames_slider_panel.grid(row = 6, column = 6, rowspan = 1, padx=2, pady=5, ipadx=3, ipady=3, sticky ="NEW")
+
+        # dynamically refresh the image if it was resized
+        if self.prev_resize_factor.get() != self.image_resize_factor.get():
+            self.prev_resize_factor.set(self.image_resize_factor.get())
+            self.update_image(0)
 
         self.write_config()
 
@@ -2266,7 +2266,7 @@ class BinViewer(Frame):
         tkMessageBox.showinfo("Master flat frame", "Master flat frame done!")
 
     def fireball_deinterlacing_process(self, logsort_export=False, no_background=False):
-        """ Process individual frames (from start frame to end frame) by applying calibartion and deinterlacing them field by field. Used for manual fireball processing.
+        """ Process individual frames (from start frame to end frame) by applying calibration and deinterlacing them field by field. Used for manual fireball processing.
         """
 
         current_image = self.current_image
@@ -3068,6 +3068,9 @@ class BinViewer(Frame):
 
         FTPdetectinfoExport = self.ConfirmationInstance.exportFTPdetectinfo()
 
+        # CAMS code, initially zero, set if there's a CAMS-format file in the folder
+        cams_code = '000000'
+
         # Copy confirmed images and write modified FTPdetectinfo, if any files were confirmed
         if len(confirmed_files):
             for ff_bin in confirmed_files:
@@ -3086,12 +3089,34 @@ class BinViewer(Frame):
                 elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json') or dir_file == '.config':
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, dir_file))
 
+                # get the CAMS CAL file name, if present, and from it the CAMS code
+                if file_ext == '.txt' and file_name[:4] == 'CAL_':
+                    cams_cal_file_name = dir_file
+                    splits = cams_cal_file_name.split('_')
+                    cams_code = splits[1]
+                    print('cams_file_name is', cams_cal_file_name, 'and code is', cams_code)
+
             # Write the filtered FTPdetectinfo content to a new file
             newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, os.path.basename(self.ConfirmationInstance.FTP_detect_file)), 'w')
             for line in FTPdetectinfoExport:
                 newFTPdetectinfo.write(line)
-
             newFTPdetectinfo.close()
+
+            # create CAMS compatible ftpdetect file if needed
+            if int(cams_code) > 0:
+                CAMS_file, _ = os.path.splitext(os.path.basename(self.ConfirmationInstance.FTP_detect_file))
+                print(CAMS_file, self.ConfirmationInstance.FTP_detect_file)
+                splits = CAMS_file.split('_')
+                rmsname = splits[1]
+                CAMS_file = CAMS_file.replace(rmsname, cams_code) + 'R.txt'
+
+                CamsdetectinfoExport = convert_rmsftp_to_cams(FTPdetectinfoExport, cams_code, cams_cal_file_name)
+                
+                newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, CAMS_file), 'w')
+                for line in CamsdetectinfoExport:
+                    newFTPdetectinfo.write(line)
+                newFTPdetectinfo.close()
+
 
         # Copy rejected images and original ftpdetectinfo
         if len(rejected_files):
@@ -3158,54 +3183,6 @@ class BinViewer(Frame):
         self.update_layout()
 
         self.update_image(0)
-
-    def exportFireballData(self, no_background=False):
-        """ Export LOG_SORT.INF file from FTPdetectinfo for fireball analysis.
-
-        no_background: images will be built without background stars
-        """
-        if self.current_image == '':
-            return None
-
-        if (self.mode.get() == 3) or (self.mode.get() == 2 and self.data_type.get() == 2):
-            # Only in confirmation in CAMS and Detected in Skypatrol
-
-            save_path, image_list = self.fireball_deinterlacing_process(logsort_export = True, no_background = no_background)
-
-            if save_path == '':
-                return False
-
-            if exportLogsort.exportLogsort(self.dir_path, save_path, self.data_type.get(), self.current_image, self.meteor_no, self.start_frame.get(), self.end_frame.get(), self.fps.get(), image_list) is False:
-                tkMessageBox.showerror("Logsort export error", "Required files (FTPdetectinfo, CapturedStats or logfile.txt) were not found in the given folder!")
-
-        else:
-            pass
-            # In detected or captured mode
-            # GENERIC LOGSORT!
-            generic_choice = tkMessageBox.askyesno("Generic LOG_SORT.INF", "Are you sure you want to create a generic LOG_SORT.INF file? \nSwitch to Confirmation mode for CAMS or Detected mode for Skypatrol to create a detection-based LOG_SORT.INF.")
-            if generic_choice == 'yes':
-                # Make generic
-                pass
-            return False
-
-        tkMessageBox.showinfo("Fireball data", "Exporting fireball data done!")
-        self.status_bar.config(text = "Exporting fireball data done!")
-
-        return True
-
-    def postprocessLogsort(self):
-        """ Fixes logsort after analysis with CMN_FBA.
-        """
-
-        logsort_path = tkFileDialog.askopenfilename(initialdir = self.dir_path, parent = self.parent, title = "Choose LOG_SORT.INF to postprocess", initialfile = "LOG_SORT.INF", defaultextension = ".INF", filetypes = [('INF files', '.inf')])
-
-        if logsort_path == '':
-            return False
-
-        if exportLogsort.postAnalysisFix(logsort_path, self.data_type.get()) is False:
-            tkMessageBox.showerror("LOG_SORT.INF error", "LOG_SORT.INF could not be opened or no CaptureStats file was found in folder! If you are working with Skypatrol data, try changing Data type to 'Skypatrol'.")
-        else:
-            tkMessageBox.showinfo("LOG_SORT.INF", "Postprocessing LOG_SORT.INF done!")
 
     def show_about(self):
         tkMessageBox.showinfo("About",
@@ -3342,14 +3319,6 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         processMenu.add_command(label = "Make master dark frame", command = self.make_master_dark)
         processMenu.add_command(label = "Make master flat frame", command = self.make_master_flat)
         self.menuBar.add_cascade(label="Process", underline=0, menu=processMenu)
-
-        # Fireball menu
-        self.fireballMenu = Menu(self.menuBar, tearoff = 0)
-        self.fireballMenu.add_command(label = "Export detection with background stars", command = lambda: self.exportFireballData(no_background = False))
-        self.fireballMenu.add_command(label = "Export detection without background stars", command = lambda: self.exportFireballData(no_background = True))
-        self.fireballMenu.add_separator()
-        self.fireballMenu.add_command(label = "Postprocess LOG_SORT.INF", command = self.postprocessLogsort)
-        self.menuBar.add_cascade(label="Fireball", underline=0, menu=self.fireballMenu)
 
         # Layout menu
         layoutMenu = Menu(self.menuBar, tearoff = 0)
