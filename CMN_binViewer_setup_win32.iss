@@ -7,23 +7,24 @@
 
 [Setup]
 AppName=CMN_binViewer
-AppVersion=2.57
+AppVersion=3.00
 AppPublisher=Croatian Meteor Network
 AppPublisherURL=http://cmn.rgn.hr/
-DefaultDirName={pf}\CMN_binViewer
+DefaultDirName={commonpf}\CMN_binViewer
 DefaultGroupName=CMN_binViewer
 UninstallDisplayIcon={app}\CMN_binViewer.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir="."
+OutputBaseFilename=CMN_binViewer-setup32
 
 [Files]
 Source: ".\build\exe.win32-3.8\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
-
+Source: ".\build\exe.win32-3.8\config.ini"; DestDir: "{app}"; Permissions: users-modify
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; 
 
 [Icons]
-Name: "{group}\CMN_binViewer"; Filename: "{app}\CMN_binViewer.exe"
+Name: "{group}\CMN_binViewer"; Filename: "{app}\CMN_binViewer.exe"; IconFilename: "{app}\icon.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\CMN_binViewer.exe"; Tasks: desktopicon; WorkingDir: {app}
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\CMN_binViewer.exe"; Tasks: desktopicon; WorkingDir: {app}; IconFilename: "{app}\icon.ico"
