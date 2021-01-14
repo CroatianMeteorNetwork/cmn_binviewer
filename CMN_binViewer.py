@@ -75,14 +75,14 @@ version = 3.00  # python 2 and 3 compatability
 
 # Disable video in Python 3
 # Video inside the GUI is very prone to crashes due to TkInter being not thread-safe. Thus it is better to
-# leave the video disabled
+# leave the video disabled. I'll fix this later. 
 
 if sys.version_info[0] < 3:
     disable_UI_video = False
 else:
     disable_UI_video = True
 
-disable_UI_video = False
+# disable_UI_video = False
 
 global_bg = "Black"
 global_fg = "Gray"
