@@ -6,16 +6,19 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 
 **Features:**
 
-1. view CAMS standard and Skypatrol standard image files in multiple filters
+1. view RMS, CAMS standard and Skypatrol standard image files in multiple filters
 2. view reconstructed video from .bin or .fits image files
 3. make calibration (dark, flat) frames from .bin or .fits image files
-4. perform CAMS confirmation procedure
+4. perform RMS/CAMS confirmation procedure
 
-**Building**
+**Installing Windows EXE**
 
-Latest Windows x64 build (recommended): https://www.dropbox.com/s/44u5r9nso81wa56/CMN_binViewer_setup_x64.exe?dl=1
+NB: you must uninstall any existing version before installing the new version. Otherwise you may get
+unexpected DLL errors ! 
 
-Latest Windows x86 build (legacy): https://www.dropbox.com/s/ygampv3b7xgxk74/CMN_binViewer_setup.exe?dl=1
+Latest Windows x64 build (recommended): https://www.dropbox.com/s/4eutahlxojrkvsa/CMN_binViewer-setup64.exe?dl=0
+
+Latest Windows x86 build (legacy): https://www.dropbox.com/s/o6jn1ecsl7trdxk/CMN_binViewer-setup32.exe?dl=0
 
 
 ## Installing on Raspberry Pi
