@@ -2043,7 +2043,7 @@ class BinViewer(Frame):
     def wxDirchoose(self, initialdir, title, _selectedDir = '.'):
         """ Opens a dialog for choosing a directory.
         """
-        folder_selected = tk.filedialog.askdirectory(title=title, initialdir=initialdir) # Returns empty string in case of cancel
+        folder_selected = tkFileDialog.askdirectory(title=title, initialdir=initialdir) # Returns empty string in case of cancel
 
         return folder_selected
 
@@ -3084,7 +3084,6 @@ class BinViewer(Frame):
                     cams_cal_file_name = dir_file
                     splits = cams_cal_file_name.split('_')
                     cams_code = splits[1]
-                    print('cams_file_name is', cams_cal_file_name, 'and code is', cams_code)
 
             # Write the filtered FTPdetectinfo content to a new file
             newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, os.path.basename(self.ConfirmationInstance.FTP_detect_file)), 'w')
@@ -3095,7 +3094,7 @@ class BinViewer(Frame):
             # create CAMS compatible ftpdetect file if needed
             if int(cams_code) > 0:
                 CAMS_file, _ = os.path.splitext(os.path.basename(self.ConfirmationInstance.FTP_detect_file))
-                print(CAMS_file, self.ConfirmationInstance.FTP_detect_file)
+                
                 splits = CAMS_file.split('_')
                 rmsname = splits[1]
                 CAMS_file = CAMS_file.replace(rmsname, cams_code) + 'R.txt'
