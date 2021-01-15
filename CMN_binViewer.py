@@ -56,8 +56,6 @@ import logging.handlers
 import traceback
 from shutil import copy2
 
-import wx
-
 import numpy as np
 from PIL import Image as img
 from PIL import ImageTk
@@ -82,7 +80,7 @@ if sys.version_info[0] < 3:
 else:
     disable_UI_video = True
 
-# disable_UI_video = False
+disable_UI_video = False
 
 global_bg = "Black"
 global_fg = "Gray"
@@ -675,7 +673,6 @@ class BinViewer(Frame):
         """
 
         # parent.geometry("1366x768")
-        # strip off terminal slash if present
 
         if dir_path is not None:
             if dir_path[-1] == os.sep:
@@ -1140,6 +1137,8 @@ class BinViewer(Frame):
             self.arcsinh_chk.grid_forget()
             self.arcsinh_chk.grid(row = 6, column = 2, sticky = "W", pady=5)
 
+            self.sort_panel.grid(row = 1, column = 5, sticky = "W", padx=2, pady=5, ipadx=5, ipady=5)
+
             # Check if Save image frame is enabled in Windows menu, if not, hide it
             if self.save_image_frame.get() is True:
                 self.save_panel.grid(row = 8, column = start_column + enabled_frames, rowspan = 2, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
@@ -1173,7 +1172,7 @@ class BinViewer(Frame):
         else:
             # Horizontal
 
-            self.listbox.config(height = 30)  # Listbox size
+            self.listbox.config(height = 25)  # Listbox size
             self.listbox.grid(row = 4, column = 0, rowspan = 7, columnspan = 2, sticky = "NS")  # Listbox position
             self.scrollbar.grid(row = 4, column = 2, rowspan = 7, sticky = "NS")  # Scrollbar size
 
@@ -1181,6 +1180,8 @@ class BinViewer(Frame):
 
             self.hold_levels_chk.grid_forget()
             self.hold_levels_chk_horizontal.grid(row = 11, column = 4, columnspan = 2, sticky = "W")
+
+            self.sort_panel.grid(row = 1, column = 6, sticky = "W", padx=2, pady=5, ipadx=5, ipady=5)
 
             self.arcsinh_chk.grid_forget()
             self.arcsinh_chk.grid(row = 6, column = 1, sticky = "W", pady=5)
@@ -2042,20 +2043,9 @@ class BinViewer(Frame):
     def wxDirchoose(self, initialdir, title, _selectedDir = '.'):
         """ Opens a dialog for choosing a directory.
         """
-        _userCancel = ''
+        folder_selected = tk.filedialog.askdirectory(title=title, initialdir=initialdir) # Returns empty string in case of cancel
 
-        _ = wx.App()
-
-        dialog = wx.DirDialog(None, title, style=1, defaultPath=initialdir, pos=(10, 10))
-
-        if dialog.ShowModal() == wx.ID_OK:
-            _selectedDir = dialog.GetPath()
-            return _selectedDir
-
-        else:
-            dialog.Destroy()
-
-        return _userCancel
+        return folder_selected
 
     def askdirectory(self, dir_path=''):
         """ Shows the directory dialog, open the directory in binviewer and returns a selected directoryname.
@@ -3437,20 +3427,20 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
             self.video_btn.grid(row = 2, column = 10)
 
         # Sort panel
-        sort_panel = LabelFrame(self, text=' Sort FF*.bins ')
-        sort_panel.grid(row = 1, column = 5, sticky = "W", padx=2, pady=5, ipadx=5, ipady=5)
+        self.sort_panel = LabelFrame(self, text=' Sort FF*.bins ')
+        self.sort_panel.grid(row = 1, column = 6, sticky = "W", padx=2, pady=5, ipadx=5, ipady=5)
 
-        sort_folder_label = Label(sort_panel, text = "Folder:")
+        sort_folder_label = Label(self.sort_panel, text = "Folder:")
         sort_folder_label.grid(row = 2, column = 4, sticky = "W")
-        sort_folder_entry = StyledEntry(sort_panel, textvariable = self.sort_folder_path, width = 15)
+        sort_folder_entry = StyledEntry(self.sort_panel, textvariable = self.sort_folder_path, width = 15)
         sort_folder_entry.grid(row = 3, column = 4)
 
         # previous_button = StyledButton(sort_panel, text ="<", width=3, command = lambda: self.move_img_up(0))
         # previous_button.grid(row = 2, column = 6, rowspan = 2)
 
-        copy_button = StyledButton(sort_panel, text ="Copy", width=5, command = lambda: self.copy_bin_to_sorted(0))
+        copy_button = StyledButton(self.sort_panel, text ="Copy", width=5, command = lambda: self.copy_bin_to_sorted(0))
         copy_button.grid(row = 2, column = 7, rowspan = 2)
-        open_button = StyledButton(sort_panel, text ="Show folder", command = lambda: self.open_current_folder(0))
+        open_button = StyledButton(self.sort_panel, text ="Show folder", command = lambda: self.open_current_folder(0))
         open_button.grid(row = 2, column = 8, rowspan = 2)
 
         # next_button = StyledButton(sort_panel, text =">", width=3, command = lambda: self.move_img_down(0))
@@ -3471,7 +3461,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         # Timestamp label
         # self.timestamp_label = Label(self, text = "YYYY-MM-DD HH:MM.SS.mms  FFF", font=("Courier", 12))
         self.timestamp_label = Label(self, text = "YYYY-MM-DD HH:MM.SS.mms", font=("Courier", 12))
-        self.timestamp_label.grid(row = 7, column = 5, sticky = "E")
+        self.timestamp_label.grid(row = 7, column = 3, sticky = "E")
         # self.timestamp_label.grid(row = 2, column = 3, sticky = "WNS")
 
         # Save buttons
@@ -3723,7 +3713,8 @@ if __name__ == '__main__':
     # Set window position and size
 
     if sys.platform == 'win32':
-        root.wm_state('zoomed')
+        root.geometry('+0+0')
+        #root.wm_state('zoomed')
     else:
         root.geometry('+0+0')
 

@@ -4,7 +4,7 @@
 astropy
 numpy
 pillow
-wxPython
+# wxPython
 tk
 scipy
 cx_Freeze ; sys_platform == "win32"
