@@ -8,7 +8,7 @@ pillow
 tk
 six
 scipy
-cx_Freeze==6 ; python_version >= "3.0" and sys_platform == "win32"
+cx_Freeze>=6 ; python_version >= "3.0" and sys_platform == "win32"
 cx_Freeze==5 ; python_version < "3.0" and sys_platform == "win32"
 imageio==2.6 ; python_version < "3.0"
 imageio>=2.7 ; python_version >= "3.0"
