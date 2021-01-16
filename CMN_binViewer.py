@@ -69,7 +69,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.00  # python 2 and 3 compatability
+version = 3.10  # python 2 and 3 compatability
 
 # Disable video in Python 3
 # Video inside the GUI is very prone to crashes due to TkInter being not thread-safe. Thus it is better to
@@ -210,7 +210,7 @@ class Video(threading.Thread):
         else:
             cache_flag = False
 
-        print('entering loop, _stop_event is', self._stop_event.is_set())
+        # print('entering loop, _stop_event is', self._stop_event.is_set())
 
         while self._stop_event.is_set() is False: 
             # print('1')
@@ -255,7 +255,7 @@ class Video(threading.Thread):
             time.sleep(max(0.01, (1.0 / self.fps) - script_time))
             # print('6')
             if self._stop_event.is_set() is True:
-                print('stopped set true')
+                # print('stopped set true')
                 break
 
         print('end of video loop')
@@ -870,6 +870,63 @@ class BinViewer(Frame):
         # Run confirmation if the flag was given
         if confirmation:
             self.confirmationStart()
+
+    def updateUFOData(self, ftpdata, ufoData):
+
+        newufoData = []
+        tstamps = []
+        for li in range(len(ufoData)):
+            if li ==0:
+                newufoData.append(ufoData[0])
+            else:
+                d = ufoData[li].split(',')
+                ss = float(d[6])
+                sec = int(float(ss))
+                us = int((ss-sec)*1000)*1000  # avoid rounding error - data is in millisecs
+                thisdt = datetime.datetime(int(d[1]), int(d[2]), int(d[3]), int(d[4]), int(d[5]), sec, us)
+                if sys.version_info[0] >=3:
+                    tstamps.append(thisdt.timestamp())
+                else:
+                    tstamps.append((thisdt - datetime.datetime(1970, 1, 1)).total_seconds())
+
+        # use an ndarray so i can perform conditional matching
+        ufotype=np.dtype([('ts','f8')])
+        all_data = np.array(tstamps, dtype=ufotype)
+
+        for i in range(len(ftpdata)):
+            if i < 11:
+                continue
+            if ftpdata[i][:3]=='---':
+                # extract the datetime of the start of the event
+                file_name = ftpdata[i+1]
+                info_line = ftpdata[i+3]
+                first_frame = ftpdata[i+4]
+
+                splits = file_name.split('_')
+                dt = datetime.datetime.strptime(splits[2] + '_' + splits[3] + '.' + splits[4], '%Y%m%d_%H%M%S.%f')
+
+                splits = info_line.split(' ')
+                fps = float(splits[3])
+
+                splits = first_frame.split(' ')
+                addsecs = float(splits[0])/fps
+
+                addmus = int(addsecs*1000)*1000
+                dt = dt + datetime.timedelta(microseconds=addmus)
+                if sys.version_info[0] >=3:
+                    dt = dt.timestamp()
+                else:
+                    dt = (dt - datetime.datetime(1970, 1, 1)).total_seconds()
+                
+                cond = abs(all_data['ts'] - dt) < 0.01  # seems to be 4-5ms variance
+
+                match = all_data[cond]
+                if len(match) > 0:
+                    for ma in match:
+                        idx = np.where(all_data == ma)
+                        newufoData.append(ufoData[idx[0][0]+1])
+
+        return newufoData
 
     def defaultBindings(self):
         """ Default key bindings. User for program init and resetting after confirmation is done.
@@ -1575,11 +1632,11 @@ class BinViewer(Frame):
         updateImageLock.release()
 
         try:
-            print('update_image: stopping video thread')
+            # print('update_image: stopping video thread')
             self.video_thread.stop()
-            print('waiting')
+            # print('waiting')
             self.video_thread.join()  # Wait for the video thread to finish
-            print('done...')
+            # print('done...')
             self.video_thread = None  # Delete video thread
         except:
             self.video_thread = None  # Delete video thread
@@ -3061,8 +3118,11 @@ class BinViewer(Frame):
         # CAMS code, initially zero, set if there's a CAMS-format file in the folder
         cams_code = '000000'
 
+        saved_tstamp = self.timestamp_label.cget("text")
+        print(saved_tstamp)
         # Copy confirmed images and write modified FTPdetectinfo, if any files were confirmed
         if len(confirmed_files):
+            self.timestamp_label.configure(text = "Copying confirmed files...")
             for ff_bin in confirmed_files:
 
                 dir_contents = os.listdir(self.dir_path)
@@ -3076,7 +3136,7 @@ class BinViewer(Frame):
                 if ('FTPdetectinfo' in dir_file) and file_ext == '.txt' and not ('_original' in file_name):
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, "".join(dir_file.split('.')[:-1]) + '_pre-confirmation.txt'))
                     continue
-                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json','.csv') or dir_file == '.config':
+                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json', '.csv') or dir_file == '.config':
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, dir_file))
 
                 # get the CAMS CAL file name, if present, and from it the CAMS code
@@ -3087,9 +3147,24 @@ class BinViewer(Frame):
 
             # Write the filtered FTPdetectinfo content to a new file
             newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, os.path.basename(self.ConfirmationInstance.FTP_detect_file)), 'w')
+
+            self.timestamp_label.configure(text = "writing FTP file...")
             for line in FTPdetectinfoExport:
                 newFTPdetectinfo.write(line)
             newFTPdetectinfo.close()
+
+            # write filtered UFO-compatible R91 csv file 
+            self.timestamp_label.configure(text = "writing UFO file...")
+            _, ufoFile=os.path.split(self.dir_path)
+            ufoFile = ufoFile + '.csv'
+            with open(os.path.join(self.dir_path, ufoFile),'r') as uf:
+                ufoData = uf.readlines()
+
+            newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+            with open(os.path.join(self.ConfirmationInstance.confirmationDirectory, ufoFile), 'w') as newUfoFile:
+                for line in newufoData:
+                    newUfoFile.write(line)
+
 
             # create CAMS compatible ftpdetect file if needed
             if int(cams_code) > 0:
@@ -3101,6 +3176,7 @@ class BinViewer(Frame):
 
                 CamsdetectinfoExport = convert_rmsftp_to_cams(FTPdetectinfoExport, cams_code, cams_cal_file_name)
                 
+                self.timestamp_label.configure(text = "writing CAMS file...")
                 newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, CAMS_file), 'w')
                 for line in CamsdetectinfoExport:
                     newFTPdetectinfo.write(line)
@@ -3109,6 +3185,7 @@ class BinViewer(Frame):
 
         # Copy rejected images and original ftpdetectinfo
         if len(rejected_files):
+            self.timestamp_label.configure(text = "Copying rejected files...")
             dir_contents = os.listdir(self.dir_path)
             for ff_bin in rejected_files:
                 if ff_bin in dir_contents:
@@ -3117,6 +3194,9 @@ class BinViewer(Frame):
                 file_name, file_ext = os.path.splitext(dir_file)
                 if file_ext in ('.txt', '.json') or dir_file == '.config':
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.rejectionDirectory, dir_file))
+
+        self.timestamp_label.configure(text = saved_tstamp)
+
 
         tkMessageBox.showinfo("Confirmation", "Confirmation statistics:\n  Confirmed: " + str(confirmed_count) + "\n  Rejected: " + str(rejected_count) + "\n  Unchecked: " + str(unchecked_count))
 
