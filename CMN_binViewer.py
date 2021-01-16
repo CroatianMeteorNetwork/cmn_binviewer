@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright notice (Revised BSD License)
@@ -24,8 +24,6 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH 
 # DAMAGE.
 
-version = 2.57
-
 import os
 import sys
 import errno
@@ -34,35 +32,54 @@ import gc
 import glob
 import time
 import datetime
+import subprocess
 
+# python 2/3 compatability
+if sys.version_info[0] < 3:
+    import Tkinter as tk
+    import tkFileDialog
+    import tkMessageBox
+    from Tkinter import IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
+        PhotoImage, NORMAL, DISABLED, Entry, Scale, Button
+    from ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
+else:
+    import tkinter as tk
+    import tkinter.filedialog as tkFileDialog
+    import tkinter.messagebox as tkMessageBox
+    from tkinter import IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
+        PhotoImage, NORMAL, DISABLED, Entry, Scale, Button
+    from tkinter.ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
 
-import tkinter.filedialog as tkFileDialog
-import tkinter.messagebox as tkMessageBox
 import threading
 import logging
 import logging.handlers
 import traceback
 from shutil import copy2
-from tkinter import Tk, W, E, IntVar, BooleanVar, StringVar, DoubleVar, Frame, ACTIVE, END, Listbox, Menu, \
-    PhotoImage, NORMAL, DISABLED, Entry, Scale, Button
-import tkinter as tk
 
-import wx
 import numpy as np
-from tkinter.ttk import Label, Style, LabelFrame, Checkbutton, Radiobutton, Scrollbar
 from PIL import Image as img
 from PIL import ImageTk
+from PIL import ImageChops
 
 from FF_bin_suite import readFF, buildFF, colorize_maxframe, max_nomean, load_dark, load_flat, process_array, \
     saveImage, make_flat_frame, makeGIF, get_detection_only, get_processed_frames, adjust_levels, \
     get_FTPdetect_coordinates, markDetections, deinterlace_array_odd, deinterlace_array_even, rescaleIntensity
 from module_confirmationClass import Confirmation
-import module_exportLogsort as exportLogsort
+# import module_exportLogsort as exportLogsort
 from module_highlightMeteorPath import highlightMeteorPath
+from module_CAMS2CMN import convert_rmsftp_to_cams
 
-# Disable video
+version = 3.00  # python 2 and 3 compatability
+
+# Disable video in Python 3
 # Video inside the GUI is very prone to crashes due to TkInter being not thread-safe. Thus it is better to
-# leave the video disabled
+# leave the video disabled. I'll fix this later. 
+
+if sys.version_info[0] < 3:
+    disable_UI_video = False
+else:
+    disable_UI_video = True
+
 disable_UI_video = False
 
 global_bg = "Black"
@@ -74,6 +91,14 @@ log_directory = 'CMN_binViewer_logs'
 
 tempImage = 0
 
+
+def getSysTime():
+    if sys.version_info[0] < 3:
+        return time.clock()
+    else:
+        return time.process_time()
+
+
 def mkdir_p(path):
     """ Makes a directory and handles all errors.
     """
@@ -82,7 +107,8 @@ def mkdir_p(path):
     except OSError as exc:
         if exc.errno == errno.EEXIST:
             pass
-        else: raise
+        else: 
+            raise
 
 
 class StyledButton(Button):
@@ -92,6 +118,7 @@ class StyledButton(Button):
         Button.__init__(self, *args, **kwargs)
 
         self.configure(foreground = global_fg, background = global_bg, borderwidth = 3)
+
 
 class StyledEntry(Entry):
     """ Entry box with style. 
@@ -108,9 +135,9 @@ class ConstrainedEntry(StyledEntry):
     def __init__(self, *args, **kwargs):
         StyledEntry.__init__(self, *args, **kwargs)
         self.maxvalue = 255
-        vcmd = (self.register(self.on_validate),"%P")
+        vcmd = (self.register(self.on_validate), "%P")
         self.configure(validate="key", validatecommand=vcmd)
-        #self.configure(foreground = global_fg, background = global_bg, insertbackground = global_fg)
+        # self.configure(foreground = global_fg, background = global_bg, insertbackground = global_fg)
 
     def disallow(self):
         """ Pings a bell on values which are out of bound.
@@ -121,14 +148,15 @@ class ConstrainedEntry(StyledEntry):
         """ Updates values in the entry box.
         """
         self.maxvalue = maxvalue
-        vcmd = (self.register(self.on_validate),"%P")
+        vcmd = (self.register(self.on_validate), "%P")
         self.configure(validate="key", validatecommand=vcmd)
 
     def on_validate(self, new_value):
         """ Checks if entered value is within bounds.
         """
         try:
-            if new_value.strip() == "": return True
+            if new_value.strip() == "":
+                return True
             value = int(new_value)
             if value < 0 or value > self.maxvalue:
                 self.disallow()
@@ -141,87 +169,96 @@ class ConstrainedEntry(StyledEntry):
 
 
 class Video(threading.Thread): 
-        """ Class for handling video showing in another thread.
-        """
-        def __init__(self, viewer_class, img_path):
-            
-            super(Video, self).__init__()
-            # Set main binViewer class to be callable inside Video class
-            self.viewer_class = viewer_class
-            self.img_path = img_path
-            self.fps = self.viewer_class.fps.get()
+    """ Class for handling video showing in another thread.
+    """
+    def __init__(self, viewer_class, img_path):
+        
+        super(Video, self).__init__()
+        # Set main binViewer class to be callable inside Video class
+        self.viewer_class = viewer_class
+        self.img_path = img_path
+        self.fps = self.viewer_class.fps.get()
 
-            self.temp_frame = self.viewer_class.temp_frame.get()
-            self.end_frame = self.viewer_class.end_frame.get()
-            self.start_frame = self.viewer_class.start_frame.get()
+        self.temp_frame = self.viewer_class.temp_frame.get()
+        self.end_frame = self.viewer_class.end_frame.get()
+        self.start_frame = self.viewer_class.start_frame.get()
 
-            self.data_type = self.viewer_class.data_type.get()
-            
+        self.data_type = self.viewer_class.data_type.get()
 
-        def run(self):
+        self._stop_event = threading.Event()
 
-            temp_frame = self.temp_frame
-            start_frame = self.start_frame
-            end_frame = self.end_frame
+    def stop(self):
+        self._stop_event.set()
 
-            video_cache = []  # Storing the fist run of reading from file to an array
+    def run(self):
 
-            ff_bin_read = readFF(self.img_path, datatype=self.data_type)
+        temp_frame = self.temp_frame
+        start_frame = self.start_frame
+        end_frame = self.end_frame
 
-            
+        video_cache = []  # Storing the fist run of reading from file to an array
 
-            # Cache everything under 75 frames
-            if (end_frame - start_frame + 1) <= 75:
-                cache_flag = True
+        ff_bin_read = readFF(self.img_path, datatype=self.data_type)
+
+        resize_fact = self.viewer_class.image_resize_factor.get()
+        if resize_fact <= 0:
+            resize_fact = 1        
+
+        # Cache everything under 75 frames
+        if (end_frame - start_frame + 1) <= 75:
+            cache_flag = True
+        else:
+            cache_flag = False
+
+        print('entering loop, _stop_event is', self._stop_event.is_set())
+
+        while self._stop_event.is_set() is False: 
+            # print('1')
+            start_time = getSysTime()   # Time the script below to achieve correct FPS
+            if temp_frame >= end_frame:
+                self.temp_frame = start_frame
+                temp_frame = start_frame
             else:
-                cache_flag = False
-
-            # Repeat until video flag is set to stop
-            while self.viewer_class.stop_video.get() == False: 
-
-                start_time = time.clock()  # Time the script below to achieve correct FPS
-
-                if temp_frame>=end_frame:
-                    self.temp_frame = start_frame
-                    temp_frame = start_frame
-                else:
-                    temp_frame += 1
-
-                if cache_flag == True:
-                    
-                    # Cache video files during first run
-                    if len(video_cache) < (end_frame - start_frame + 1):
-                        img_array = buildFF(ff_bin_read, temp_frame, videoFlag = True)
-                        video_cache.append(img_array)
-                    else:
-                        img_array = video_cache[temp_frame - start_frame] # Read cached video frames in consecutive runs
-
-                else:
+                temp_frame += 1
+            # print('2')
+            if cache_flag is True:
+                
+                # Cache video files during first run
+                if len(video_cache) < (end_frame - start_frame + 1):
                     img_array = buildFF(ff_bin_read, temp_frame, videoFlag = True)
+                    video_cache.append(img_array)
+                else:
+                    img_array = video_cache[temp_frame - start_frame] # Read cached video frames in consecutive runs
 
-                
-                self.viewer_class.img_data = img_array
+            else:
+                img_array = buildFF(ff_bin_read, temp_frame, videoFlag = True)
 
-                # temp_image = ImageTk.PhotoImage(img.fromarray(img_array)) #Prepare for showing
+            self.viewer_class.img_data = img_array
 
-                # Prepare image for showing
-                resize_fact = self.viewer_class.image_resize_factor.get()
-                temp_image = ImageTk.PhotoImage(img.fromarray(img_array).resize((img_array.shape[1]//resize_fact, img_array.shape[0]//resize_fact), img.BILINEAR))
+            # Prepare image for showing
+            temp_image = ImageTk.PhotoImage(img.fromarray(img_array).resize((img_array.shape[1] // resize_fact, img_array.shape[0] // resize_fact), img.BILINEAR))
 
+            self.viewer_class.imagelabel.configure(image = temp_image) #Set image to image label
+            self.viewer_class.imagelabel.image = temp_image
+            # print('3f')
 
-                self.viewer_class.imagelabel.configure(image = temp_image) #Set image to image label
-                self.viewer_class.imagelabel.image = temp_image
+            # Set timestamp
+            # print('4')
+            _, img_name = os.path.split(self.img_path)
+            self.viewer_class.set_timestamp(temp_frame, image_name=img_name)
+            # print('5')
 
-                # Set timestamp
-                self.viewer_class.set_timestamp(temp_frame, image_name = self.img_path.split(os.sep)[-1])
-                
-                # Sleep for 1/FPS with corrected time for script running time
-                end_time = time.clock()
+            # Sleep for 1/FPS with corrected time for script running time
+            end_time = getSysTime()
+            script_time = float(end_time - start_time)
+            # Don't run sleep if the script time is bigger than FPS
+            time.sleep(max(0.01, (1.0 / self.fps) - script_time))
+            # print('6')
+            if self._stop_event.is_set() is True:
+                print('stopped set true')
+                break
 
-                script_time = float(end_time - start_time)
-                # Don't run sleep if the script time is bigger than FPS
-                if not script_time > 1.0/self.fps:
-                    time.sleep(1.0/self.fps - script_time)
+        print('end of video loop')
 
 
 class ExternalVideo(Frame): 
@@ -233,10 +270,10 @@ class ExternalVideo(Frame):
         parent.configure(bg = global_bg) # Set backgound color
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_rowconfigure(0, weight=1)
-        
-        
+
+
         self.grid(sticky="NSEW") # Expand frame to all directions
-         
+
         self.parent = parent
 
         self.parent.title("External video")
@@ -274,35 +311,35 @@ class ExternalVideo(Frame):
 
         if dimensions == 2:
             # 1.5 size external video
-            self.external_video_ncols = int(self.external_video_ncols/1.22474487139)
-            self.external_video_nrows = int(self.external_video_nrows/1.22474487139)
+            self.external_video_ncols = int(self.external_video_ncols / 1.22474487139)
+            self.external_video_nrows = int(self.external_video_nrows / 1.22474487139)
         elif dimensions == 3:
             # Half size external video
-            self.external_video_ncols = int(self.external_video_ncols/1.41421356237)
-            self.external_video_nrows = int(self.external_video_nrows/1.41421356237)
+            self.external_video_ncols = int(self.external_video_ncols / 1.41421356237)
+            self.external_video_nrows = int(self.external_video_nrows / 1.41421356237)
         elif dimensions == 4:
             # Quarter size external video
-            self.external_video_ncols = int(self.external_video_ncols/2)
-            self.external_video_nrows = int(self.external_video_nrows/2)
+            self.external_video_ncols = int(self.external_video_ncols / 2)
+            self.external_video_nrows = int(self.external_video_nrows / 2)
 
         # Set window size
-        self.parent.geometry(str(self.external_video_ncols)+"x"+str(self.external_video_nrows))
+        self.parent.geometry(str(self.external_video_ncols) + "x" + str(self.external_video_nrows))
 
         # Add a few frames to each side, to better see the detection
         start_temp = start_frame - 5
         end_temp = end_frame + 5
 
-        start_frame = 0 if start_temp<0 else start_temp
+        start_frame = 0 if start_temp < 0 else start_temp
 
         if data_type == 1:
             
             # CAMS data type
-            end_frame = 255 if end_temp>255 else end_temp
+            end_frame = 255 if end_temp > 255 else end_temp
 
         elif data_type == 2: 
             
             # Skypatrol data dype
-            end_frame = 1500 if end_temp>1500 else end_temp
+            end_frame = 1500 if end_temp > 1500 else end_temp
 
         elif data_type == 3:
 
@@ -331,7 +368,7 @@ class ExternalVideo(Frame):
         self.external_videoCache = []
 
         self.external_video_FirstRun = True
-        
+
         # Run external video
         self.run()
 
@@ -341,10 +378,10 @@ class ExternalVideo(Frame):
 
         global stop_external_video
 
-        start_time = time.clock()  # Time the script below to achieve correct FPS
+        start_time = getSysTime()  # Time the script below to achieve correct FPS
 
         if self.external_video_FirstRun:
-            if self.cache_flag == True: 
+            if self.cache_flag is True: 
                 # Cache video files during first run
                 img_array = buildFF(self.external_video_FFbinRead, self.external_video_counter, videoFlag = True)
                 self.external_videoCache.append(img_array)
@@ -352,12 +389,12 @@ class ExternalVideo(Frame):
             else:
                 img_array = buildFF(self.external_video_FFbinRead, self.external_video_counter, videoFlag = True)
         else:
-            if self.cache_flag == True:
+            if self.cache_flag is True:
                 img_array = self.external_videoCache[self.external_video_counter - self.external_video_startFrame] # Read cached video frames in consecutive runs
             else:
                 img_array = buildFF(self.external_video_FFbinRead, self.external_video_counter, videoFlag = True)
 
-        
+
         temp_image = ImageTk.PhotoImage(img.fromarray(img_array).resize((self.external_video_ncols, self.external_video_nrows), img.BILINEAR)) #Prepare for showing
         self.externalVideoLabel.configure(image = temp_image) #Set image to image label
         self.externalVideoLabel.image = temp_image
@@ -368,22 +405,22 @@ class ExternalVideo(Frame):
             self.external_video_FirstRun = False
         else:
             self.external_video_counter += 1
-        
+
         # Sleep for 1/FPS with corrected time for script running time
-        end_time = time.clock()
+        end_time = getSysTime()
 
         script_time = float(end_time - start_time)
 
-        if not script_time > 1.0/self.fps:
-            delay = 1.0/self.fps - script_time
+        if not script_time > 1.0 / self.fps:
+            delay = 1.0 / self.fps - script_time
         else:
             delay = 0.001
 
         if not stop_external_video:
-            self.after(int(delay*1000), self.run)
+            self.after(int(delay * 1000), self.run)
 
 
-class ConfirmationVideo(Frame): 
+class ConfirmationVideo(Frame):
     """ Class for handling Confirmation video showing in another window.
     """
     def __init__(self, parent):
@@ -393,10 +430,9 @@ class ConfirmationVideo(Frame):
         parent.configure(bg = global_bg) # Set backgound color
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_rowconfigure(0, weight=1)
-        
-        
+
         self.grid(sticky="NSEW") # Expand frame to all directions
-         
+
         self.parent = parent
 
         self.parent.title("Detection centered video")
@@ -429,11 +465,11 @@ class ConfirmationVideo(Frame):
 
         # Collect garbage and free memory
         gc.collect()
-  
+
         self.confirmation_videoCache = []
 
         self.confirmation_video_FirstRun = True
-        
+
         # Run confirmation video
         self.run()
 
@@ -445,7 +481,7 @@ class ConfirmationVideo(Frame):
 
         cropSize = self.cropSize
 
-        start_time = time.clock()
+        start_time = getSysTime()
 
         if self.confirmation_video_FirstRun:
             coordinate = self.confirmation_video_segmentList[0][self.confirmation_video_counter]
@@ -458,7 +494,7 @@ class ConfirmationVideo(Frame):
             y = int(y)
             if y % 2 == 1:
                 y += 1
-            
+
             x_left = x - cropSize
             y_left = y - cropSize
 
@@ -467,52 +503,46 @@ class ConfirmationVideo(Frame):
 
             x_diff = 0
             y_diff = 0
-            x_end = cropSize*2
-            y_end = cropSize*2
+            x_end = cropSize * 2
+            y_end = cropSize * 2
 
             fillZeoresFlag = False
             if x_left < 0:
                 fillZeoresFlag = True
                 x_diff = -x_left
-                x_end = cropSize*2
-
+                x_end = cropSize * 2
                 x_left = 0
-                
 
             if y_left < 0:
                 fillZeoresFlag = True
                 y_diff = -y_left
-                y_end = cropSize*2
-
+                y_end = cropSize * 2
                 y_left = 0
-                
 
             if x_right > self.confirmation_video_ncols:
                 fillZeoresFlag = True
                 x_diff = 0
-                x_end = cropSize*2 - (x_right - self.confirmation_video_ncols)
+                x_end = cropSize * 2 - (x_right - self.confirmation_video_ncols)
 
                 x_right = self.confirmation_video_ncols
-                
 
             if y_right > self.confirmation_video_nrows:
                 fillZeoresFlag = True
                 y_diff = 0
-                y_end = cropSize*2 - (y_right - self.confirmation_video_nrows - 1)
+                y_end = cropSize * 2 - (y_right - self.confirmation_video_nrows - 1)
 
                 y_right = self.confirmation_video_nrows + 1
-                
 
             imageArray = buildFF(self.confirmation_video_FFbinRead, int(frame), videoFlag = True)
 
             # If croped area is in the corner, fill corner with zeroes
             if fillZeoresFlag:
 
-                cropedArray = np.zeros(shape =(cropSize*2, cropSize*2))
+                cropedArray = np.zeros(shape =(cropSize * 2, cropSize * 2))
                 tempCrop = imageArray[y_left:y_right, x_left:x_right]
 
                 cropedArray[y_diff:y_end, x_diff:x_end] = tempCrop
-            
+
             else:
                 cropedArray = imageArray[y_left:y_right, x_left:x_right]
 
@@ -528,8 +558,8 @@ class ConfirmationVideo(Frame):
         else:
             cropedArray = self.confirmation_videoCache[self.confirmation_video_counter]
 
-        tempImage = ImageTk.PhotoImage(img.fromarray(cropedArray).resize((256, 256), img.BICUBIC)) #Prepare for showing
-        self.confirmationVideoLabel.configure(image = tempImage) #Set image to image label
+        tempImage = ImageTk.PhotoImage(img.fromarray(cropedArray).resize((256, 256), img.BICUBIC))  # Prepare for showing
+        self.confirmationVideoLabel.configure(image = tempImage)  # Set image to image label
         self.confirmationVideoLabel.image = tempImage
 
         # Deal with frame counter
@@ -540,17 +570,17 @@ class ConfirmationVideo(Frame):
             self.confirmation_video_counter += 1
 
         # Sleep for 1/FPS with corrected time for script running time
-        end_time = time.clock()
+        end_time = getSysTime()
 
         script_time = float(end_time - start_time)
         slowFactor = 1.1
-        if not script_time > slowFactor*1.0/self.fps:
-            delay = slowFactor*1.0/self.fps - script_time
+        if not script_time > slowFactor * 1.0 / self.fps:
+            delay = slowFactor * 1.0 / self.fps - script_time
         else:
             delay = 0.001
 
         if not stop_confirmation_video:
-            self.after(int(delay*1000), self.run)
+            self.after(int(delay * 1000), self.run)
 
 
 class SuperBind():
@@ -583,14 +613,14 @@ class SuperBind():
         self.pressed_function = pressed_function
         self.release_function = release_function
 
-        self.root.bind('<KeyPress-'+key+'>', self.keyPress)
-        self.root.bind('<KeyRelease-'+key+'>', self.keyRelease)
+        self.root.bind('<KeyPress-' + key + '>', self.keyPress)
+        self.root.bind('<KeyRelease-' + key + '>', self.keyRelease)
 
         self.pressed_counter = 0
 
     def keyPress(self, event):
-        if self.afterId != None:
-            self.master.after_cancel( self.afterId )
+        if self.afterId is not None:
+            self.master.after_cancel(self.afterId)
             self.afterId = None
             self.pressed_function()
         else:
@@ -601,20 +631,20 @@ class SuperBind():
                     # When this is true, pressed function will be called and release function will be called both
                     self.release_function()
                 else:
-                    if self.no_repeat_function != None:
+                    if self.no_repeat_function is not None:
                         # If a special function is provided, run it instead
                         self.no_repeat_function()
-            
+
             self.pressed_counter += 1
 
-
     def keyRelease(self, event):
-        self.afterId = self.master.after_idle( self.processRelease, event )
+        self.afterId = self.master.after_idle(self.processRelease, event)
 
     def processRelease(self, event):
         self.release_function()
         self.afterId = None
         self.pressed_counter = 0
+
 
 class SuperUnbind():
     """ Unbind all that was bound by SuperBind.
@@ -623,16 +653,16 @@ class SuperUnbind():
         self.master = master
         self.root = root
 
-        self.root.unbind('<KeyPress-'+key+'>')
-        self.root.unbind('<KeyRelease-'+key+'>')
+        self.root.unbind('<KeyPress-' + key + '>')
+        self.root.unbind('<KeyRelease-' + key + '>')
 
 
 class BinViewer(Frame):
-    """ Main CMN_binViewer window. 
+    """ Main CMN_binViewer window.
     """
     def __init__(self, parent, dir_path=None, confirmation=False):
-        """ Runs only when the viewer class is created (i.e. on the program startup only). 
-    
+        """ Runs only when the viewer class is created (i.e. on the program startup only).
+
         Arguments:
             parent: [tk object] Tk root handle.
 
@@ -642,20 +672,23 @@ class BinViewer(Frame):
 
         """
 
-        #parent.geometry("1366x768")
+        # parent.geometry("1366x768")
 
-        Frame.__init__(self, parent, bg = global_bg)  
-        parent.configure(bg = global_bg) # Set backgound color
+        if dir_path is not None:
+            if dir_path[-1] == os.sep:
+                dir_path = dir_path[:-1]
+
+        Frame.__init__(self, parent, bg = global_bg)
+        parent.configure(bg = global_bg)  # Set backgound color
         parent.grid_columnconfigure(0, weight=1)
         parent.grid_rowconfigure(0, weight=1)
-        
-        self.grid(sticky="NSEW") # Expand frame to all directions
-        #self.grid_propagate(0)
-         
+
+        self.grid(sticky="NSEW")  # Expand frame to all directions
+        # self.grid_propagate(0)
+
         self.parent = parent
 
-
-        ## DEFINE INITIAL VARIABLES
+        # DEFINE INITIAL VARIABLES
 
         self.filter_no = 6  # Number of filters
         self.dir_path = os.path.abspath(os.sep)
@@ -665,16 +698,16 @@ class BinViewer(Frame):
         # Read configuration file
         orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines, image_resize_factor = self.readConfig()
 
-
         # Image resize factor
         self.image_resize_factor = IntVar()
         self.image_resize_factor.set(image_resize_factor)
+        self.prev_resize_factor = IntVar()
+        self.prev_resize_factor.set(image_resize_factor)
 
         if orientation == 0:
             self.layout_vertical.set(False)
         else:
             self.layout_vertical.set(True)
-
 
         self.mode = IntVar()
         self.minimum_frames = IntVar()
@@ -714,6 +747,9 @@ class BinViewer(Frame):
         self.deinterlace = BooleanVar()
         self.deinterlace.set(False)
 
+        self.invert = BooleanVar()
+        self.invert.set(False)
+
         self.hold_levels = BooleanVar()
         self.hold_levels.set(False)
 
@@ -730,15 +766,12 @@ class BinViewer(Frame):
 
         self.start_frame = IntVar()
         self.start_frame.set(0)
-        
+
         self.end_frame = IntVar()
         self.end_frame.set(255)
 
         self.temp_frame = IntVar()
         self.temp_frame.set(self.start_frame.get())
-
-        self.stop_video = BooleanVar()
-        self.stop_video.set(True)
 
         self.stop_confirmation_video = BooleanVar()
         self.stop_confirmation_video.set(True)
@@ -790,18 +823,18 @@ class BinViewer(Frame):
         # Fast image change flag
         self.fast_img_change = False
 
+
         # Misc
         global readFF
-        readFF = self.readFF_decorator(readFF) # Decorate readFF function by also passing datatype, so that readFF doesn't have to be changed through the code
+        readFF = self.readFF_decorator(readFF)  # Decorate readFF function by also passing datatype, so that readFF doesn't have to be changed through the code
 
         # Initilize GUI
         self.initUI()
 
         # Bind key presses, window changes, etc. (key bindings)
-        
+
         parent.bind("<Home>", self.move_top)
         parent.bind("<End>", self.move_bottom)
-
 
         # Call default bindings
         self.defaultBindings()
@@ -826,7 +859,6 @@ class BinViewer(Frame):
 
         parent.bind("<Return>", self.copy_bin_to_sorted)
 
-
         # Update UI changes
         parent.update_idletasks()
         parent.update()
@@ -835,15 +867,12 @@ class BinViewer(Frame):
         if dir_path is not None:
             self.askdirectory(dir_path=dir_path)
 
-
         # Run confirmation if the flag was given
         if confirmation:
             self.confirmationStart()
 
-
-
     def defaultBindings(self):
-        """ Default key bindings. User for program init and resetig after confirmation is done.
+        """ Default key bindings. User for program init and resetting after confirmation is done.
         """
         # Unbind possible old bindings
         SuperUnbind("Delete", self, self.parent)
@@ -859,17 +888,16 @@ class BinViewer(Frame):
         self.parent.bind("<Return>", self.copy_bin_to_sorted)  # Enter
         self.parent.bind("<Delete>", self.deinterlace_toggle)  # Deinterlace
 
-
     def readFF_decorator(self, func):
-        """ Decorator used to pass self.data_type to readFF without changing all readFF statements in the code. 
+        """ Decorator used to pass self.data_type to readFF without changing all readFF statements in the code.
         """
-        
+
         def inner(*args, **kwargs):
             if "datatype" in kwargs:
                 return func(*args, **kwargs)
             else:
                 return func(*args, datatype = self.data_type.get())
-        
+
         return inner
 
     def correct_datafile_name(self, datafile):
@@ -882,25 +910,25 @@ class BinViewer(Frame):
             if len(datafile) == 37:
                 # e.g. FF451_20140819_003718_000_0397568.bin
                 if datafile.count("_") == 4:
-                    if datafile.split('.')[-1] =='bin':
-                        if datafile[0:2] =="FF":
+                    if datafile.split('.')[-1] == 'bin':
+                        if datafile[0:2] == "FF":
                             return True, 1
 
             # CAMS data type (NEW)
             if len(datafile) == 41:
                 # e.g. FF_000432_20161024_075333_209_0944384.bin
                 if datafile.count("_") == 5:
-                    if datafile.split('.')[-1] =='bin':
-                        if datafile[0:2] =="FF":
+                    if datafile.split('.')[-1] == 'bin':
+                        if datafile[0:2] == "FF":
                             return True, -1
-        
+
         elif self.data_type.get() == 2:
 
             # Skypatrol data type
 
             if len(datafile) == 12:
                 # e.g. 00000171.bmp
-                if datafile.split('.')[-1] =='bmp':
+                if datafile.split('.')[-1] == 'bmp':
                     return True, 0
 
         else:
@@ -929,7 +957,7 @@ class BinViewer(Frame):
         try:
             config_lines = open(config_file, 'r').readlines()
         except:
-            tkMessageBox.showerror("Configuration file "+config_file+" not found! Program files are compromised!")
+            tkMessageBox.showerror("Configuration file " + config_file + " not found! Program files are compromised!")
             return read_list
 
         for line in config_lines:
@@ -958,14 +986,12 @@ class BinViewer(Frame):
             if 'image_resize_factor' in line[0]:
                 image_resize_factor = int(line[1])
 
-                
-
         read_list = (orientation, fps, dir_path, external_video, edge_marker, external_guidelines, image_resize_factor)
 
         return read_list
 
     def write_config(self):
-        """ Writes the configuration file. 
+        """ Writes the configuration file.
         """
         orientation = int(self.layout_vertical.get())
         fps = int(self.fps.get())
@@ -974,7 +1000,7 @@ class BinViewer(Frame):
         external_guidelines = int(self.external_guidelines.get())
         image_resize_factor = int(self.image_resize_factor.get())
 
-        if not fps in (25, 30):
+        if fps not in (25, 30):
             fps = 25
 
         try:
@@ -984,9 +1010,9 @@ class BinViewer(Frame):
 
         new_config.write("# Configuration file\n# DO NOT CHANGE VALUES MANUALLY\n\n")
 
-        new_config.write("orientation = "+str(orientation)+" # 0 horizontal, 1 vertical\n")
-        new_config.write("fps = "+str(fps)+"\n")
-        new_config.write("image_resize_factor = "+str(image_resize_factor)+"\n")
+        new_config.write("orientation = " + str(orientation) + " # 0 horizontal, 1 vertical\n")
+        new_config.write("fps = " + str(fps) + "\n")
+        new_config.write("image_resize_factor = " + str(image_resize_factor) + "\n")
 
         if ('CAMS' in self.dir_path) or ('Captured' in self.dir_path) or ('Archived' in self.dir_path):
             temp_path = self.dir_path
@@ -1001,21 +1027,21 @@ class BinViewer(Frame):
 
             # Write config parameters to config.ini, but check for non-ascii characters in the directory path
             try:
-                new_config.write("dir_path = "+temp_path.strip()+"\n")
+                new_config.write("dir_path = " + temp_path.strip() + "\n")
             except:
                 # Non ascii - characters found
                 tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
-                sys.exit()
-                new_config.close()
+                sys.exit(0)
 
-                new_config.write("external_video = "+str(external_video)+"\n")
-                new_config.write("edge_marker = "+str(edge_marker)+"\n")
-                new_config.write("external_guidelines = "+str(external_guidelines)+"\n")
-        
+        new_config.write("external_video = " + str(external_video) + "\n")
+        new_config.write("edge_marker = " + str(edge_marker) + "\n")
+        new_config.write("external_guidelines = " + str(external_guidelines) + "\n")
+        new_config.close()
+
         return True
 
     def update_data_type(self):
-        """ Updates the data_type variable to match data type of directory content. If there are CAMS files, 
+        """ Updates the data_type variable to match data type of directory content. If there are CAMS files,
             it returns 1, if the Skypatrol files prevail, it returns 2, and if fits pervial it returns 3.
         """
 
@@ -1029,9 +1055,9 @@ class BinViewer(Frame):
         if data_type_var == 0:
 
             # Auto - determine data type
-            bin_count = len(glob.glob1(self.dir_path,"FF*.bin"))
-            bmp_count = len(glob.glob1(self.dir_path,"*.bmp"))
-            fits_count = len(glob.glob1(self.dir_path,"FF*.fits"))
+            bin_count = len(glob.glob1(self.dir_path, "FF*.bin"))
+            bmp_count = len(glob.glob1(self.dir_path, "*.bmp"))
+            fits_count = len(glob.glob1(self.dir_path, "FF*.fits"))
 
             dir_contents = os.listdir(self.dir_path)
 
@@ -1043,40 +1069,37 @@ class BinViewer(Frame):
                 self.end_frame.set(255)
 
             elif (bin_count >= bmp_count) or ("FTPdetectinfo_" in dir_contents):
-                
+
                 # Set to CAMS if there are more bin files
-                self.data_type.set(1)  
+                self.data_type.set(1)
                 self.end_frame.set(255)
 
             elif (bmp_count >= bin_count):
 
                 # Set to Skypatrol if there are more BMP files
-                self.data_type.set(2)  
+                self.data_type.set(2)
                 self.end_frame.set(1500)
 
-                
-
-
         elif data_type_var == 1:
-            
+
             # CAMS
             self.data_type.set(1)
             self.end_frame.set(255)
 
         elif data_type_var == 2:
-            
+
             # Skypatrol
             self.data_type.set(2)
             self.end_frame.set(1500)
 
         elif data_type_var == 3:
-            
+
             # RMS FITS
             self.data_type.set(3)
             self.end_frame.set(255)
 
         # Update listbox
-        self.update_listbox(self.get_bin_list())  
+        self.update_listbox(self.get_bin_list())
 
         self.mode.set(1)
         self.filter.set(1)
@@ -1085,9 +1108,8 @@ class BinViewer(Frame):
 
         self.update_image(0)
 
-
     def update_layout(self):
-        """ Updates the layout (horizontal/vertical). 
+        """ Updates the layout (horizontal/vertical).
         """
 
         self.menuBar.entryconfig("Window", state = "normal")
@@ -1096,13 +1118,13 @@ class BinViewer(Frame):
         layout_frames = [self.save_image_frame, self.image_levels_frame, self.save_animation_frame, self.frame_scale_frame]
         enabled_frames = 0
         for frame in layout_frames:
-            if frame.get() == True:
+            if frame.get() is True:
                 enabled_frames -= 1
 
         # First column of vertical layout
         start_column = 3 + 3
 
-        if self.layout_vertical.get() == True:
+        if self.layout_vertical.get() is True:
             # Vertical
 
             self.listbox.config(height = 37)  # Listbox size
@@ -1114,42 +1136,43 @@ class BinViewer(Frame):
 
             self.arcsinh_chk.grid_forget()
             self.arcsinh_chk.grid(row = 6, column = 2, sticky = "W", pady=5)
-            
+
+            self.sort_panel.grid(row = 1, column = 5, sticky = "W", padx=2, pady=5, ipadx=5, ipady=5)
 
             # Check if Save image frame is enabled in Windows menu, if not, hide it
-            if self.save_image_frame.get() == True:
-                self.save_panel.grid(row = 8, column = start_column+enabled_frames, rowspan = 2, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
+            if self.save_image_frame.get() is True:
+                self.save_panel.grid(row = 8, column = start_column + enabled_frames, rowspan = 2, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
                 enabled_frames += 1
                 self.print_name_btn.grid(row = 9, column = 6, rowspan = 2)
             else:
                 self.save_panel.grid_forget()
 
             # Check if Image levels frame is enabled in Windows menu, if not, hide it
-            if self.image_levels_frame.get() == True:
-                self.levels_label.grid(row = 8, column = start_column+enabled_frames, rowspan = 2, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
+            if self.image_levels_frame.get() is True:
+                self.levels_label.grid(row = 8, column = start_column + enabled_frames, rowspan = 2, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
                 enabled_frames += 1
             else:
                 self.levels_label.grid_forget()
 
             # Check if Save animation frame is enabled in Windows menu, if not, hide it
-            if self.save_animation_frame.get() == True:
-                self.animation_panel.grid(row = 8, column = start_column+enabled_frames, rowspan = 2, columnspan = 1, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
+            if self.save_animation_frame.get() is True:
+                self.animation_panel.grid(row = 8, column = start_column + enabled_frames, rowspan = 2, columnspan = 1, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
                 enabled_frames += 1
                 self.gif_make_btn.grid(row = 9, column = 7, rowspan = 4, sticky = "NSEW")
             else:
                 self.animation_panel.grid_forget()
 
             # Frame scale if filter "Frames" is chosen
-            if self.frame_scale_frame.get() == True:
-                self.frames_slider_panel.grid(row = 8, column = start_column+enabled_frames, rowspan = 2, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
+            if self.frame_scale_frame.get() is True:
+                self.frames_slider_panel.grid(row = 8, column = start_column + enabled_frames, rowspan = 2, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
                 enabled_frames += 1
             else:
                 self.frames_slider_panel.grid_forget()
 
         else:
             # Horizontal
-                
-            self.listbox.config(height = 30) #Listbox size
+
+            self.listbox.config(height = 25)  # Listbox size
             self.listbox.grid(row = 4, column = 0, rowspan = 7, columnspan = 2, sticky = "NS")  # Listbox position
             self.scrollbar.grid(row = 4, column = 2, rowspan = 7, sticky = "NS")  # Scrollbar size
 
@@ -1158,9 +1181,10 @@ class BinViewer(Frame):
             self.hold_levels_chk.grid_forget()
             self.hold_levels_chk_horizontal.grid(row = 11, column = 4, columnspan = 2, sticky = "W")
 
+            self.sort_panel.grid(row = 1, column = 6, sticky = "W", padx=2, pady=5, ipadx=5, ipady=5)
+
             self.arcsinh_chk.grid_forget()
             self.arcsinh_chk.grid(row = 6, column = 1, sticky = "W", pady=5)
-
 
             self.save_panel.grid(row = 3, column = 6, rowspan = 1, sticky = "NEW", padx=2, pady=5, ipadx=3, ipady=3)
             self.print_name_btn.grid(row = 11, column = 3, rowspan = 1)
@@ -1174,8 +1198,12 @@ class BinViewer(Frame):
 
             self.frames_slider_panel.grid(row = 6, column = 6, rowspan = 1, padx=2, pady=5, ipadx=3, ipady=3, sticky ="NEW")
 
+        # dynamically refresh the image if it was resized
+        if self.prev_resize_factor.get() != self.image_resize_factor.get():
+            self.prev_resize_factor.set(self.image_resize_factor.get())
+            self.update_image(0)
+
         self.write_config()
-            
 
     def move_img_up(self, event):
         """ Moves one list entry up if the focus is not on the list, when the key Up is pressed.
@@ -1183,8 +1211,8 @@ class BinViewer(Frame):
 
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
-                
-        if not self.listbox is self.parent.focus_get():
+
+        if self.listbox is not self.parent.focus_get():
 
             self.listbox.focus()
 
@@ -1196,7 +1224,7 @@ class BinViewer(Frame):
             next_index = cur_index - 1
             if next_index < 0:
                 next_index = 0
-            
+
             self.listbox.activate(next_index)
             self.listbox.selection_clear(0, END)
             self.listbox.selection_set(next_index)
@@ -1204,7 +1232,7 @@ class BinViewer(Frame):
 
             self.update_image(1)
 
-        #print 'moved up!'
+        # print('moved up!')
         moveImgLock.release()
 
     def move_img_down(self, event):
@@ -1214,27 +1242,26 @@ class BinViewer(Frame):
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
 
             self.listbox.focus()
-            
+
             try:
                 cur_index = int(self.listbox.curselection()[0])
             except:
                 moveImgLock.release()
                 return None
             next_index = cur_index + 1
-            size = self.listbox.size()-1
+            size = self.listbox.size() - 1
             if next_index > size:
                 next_index = size
-            
+
             self.listbox.activate(next_index)
             self.listbox.selection_clear(0, END)
             self.listbox.selection_set(next_index)
             self.listbox.see(next_index)
 
             self.update_image(1)
-
 
         moveImgLock.release()
 
@@ -1244,7 +1271,7 @@ class BinViewer(Frame):
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
             self.listbox.focus()
 
         self.listbox.activate(0)
@@ -1262,7 +1289,7 @@ class BinViewer(Frame):
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
             self.listbox.focus()
 
         self.listbox.activate(END)
@@ -1283,7 +1310,7 @@ class BinViewer(Frame):
         moveImgLock = threading.RLock()
         moveImgLock.acquire()
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
             self.listbox.focus()
 
         self.listbox.activate(index)
@@ -1382,13 +1409,13 @@ class BinViewer(Frame):
     def filter_left(self, event):
         """ Moves the filter field to the left.
         """
-        if self.mode.get() != 2: 
+        if self.mode.get() != 2:
             # Disabled in detections mode
             next_filter = self.filter.get() - 1
-            if next_filter<1 or next_filter>self.filter_no:
+            if next_filter < 1 or next_filter > self.filter_no:
                 next_filter = self.filter_no
             self.filter.set(next_filter)
-        else:  
+        else:
             # In detected mode
             self.filter.set(3)
 
@@ -1400,7 +1427,7 @@ class BinViewer(Frame):
         if self.mode.get() != 2:
             # Disabled in detections mode
             next_filter = self.filter.get() + 1
-            if next_filter>self.filter_no:
+            if next_filter > self.filter_no:
                 next_filter = 1
             self.filter.set(next_filter)
         else:
@@ -1412,7 +1439,7 @@ class BinViewer(Frame):
     def deinterlace_toggle(self, event):
         """ Turns the deinterlace on/off.
         """
-        if self.deinterlace.get() == True:
+        if self.deinterlace.get() is True:
             self.deinterlace.set(False)
         else:
             self.deinterlace.set(True)
@@ -1420,9 +1447,9 @@ class BinViewer(Frame):
         self.update_image(0)
 
     def hold_levels_toggle(self, event):
-        """ Toggle Hold levels button. 
+        """ Toggle Hold levels button.
         """
-        if self.hold_levels.get() == True:
+        if self.hold_levels.get() is True:
             self.hold_levels.set(False)
         else:
             self.hold_levels.set(True)
@@ -1430,7 +1457,7 @@ class BinViewer(Frame):
     def dark_toggle(self, event):
         """Toggles the dark frame on/off.
         """
-        if self.dark_status.get() == True:
+        if self.dark_status.get() is True:
             self.dark_status.set(False)
         else:
             self.dark_status.set(True)
@@ -1441,7 +1468,6 @@ class BinViewer(Frame):
         """ Opens dark frame via file dialog.
         """
         temp_dark = tkFileDialog.askopenfilename(initialdir = self.dir_path, parent = self.parent, title = "Choose dark frame file", initialfile = "dark.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
-        temp_dark = temp_dark.replace('/', os.sep)
         if temp_dark != '':
             self.dark_name.set(temp_dark)
 
@@ -1449,14 +1475,13 @@ class BinViewer(Frame):
         """ Opens flat frame via file dialog.
         """
         temp_flat = tkFileDialog.askopenfilename(initialdir = self.dir_path, parent = self.parent, title = "Choose flat frame file", initialfile = "flat.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
-        temp_flat = temp_flat.replace('/', os.sep)
         if temp_flat != '':
             self.flat_name.set(temp_flat)
 
     def flat_toggle(self, event):
         """Toggles the flat frame on/off.
         """
-        if self.flat_status.get() == True:
+        if self.flat_status.get() is True:
             self.flat_status.set(False)
         else:
             self.flat_status.set(True)
@@ -1464,7 +1489,7 @@ class BinViewer(Frame):
         self.update_image(0)
 
     def update_current_image(self):
-        """ Updates 2 varibales for tracking the current image, without changing the screen. Used for confirmation. 
+        """ Updates 2 varibales for tracking the current image, without changing the screen. Used for confirmation.
         """
 
         self.block_img_update = True
@@ -1487,7 +1512,7 @@ class BinViewer(Frame):
         self.confirmationListboxEntry = " ".join(self.current_image.split()[0:2])
 
         # Modify current image for Confirmation mode
-        if self.mode.get() == 3: 
+        if self.mode.get() == 3:
             self.current_image = self.current_image.split()[0]
 
         updateImgLock.release()
@@ -1498,19 +1523,18 @@ class BinViewer(Frame):
         """ Set flag for fast image change when key is being held down.
         """
         self.fast_img_change = True
-        
-        if not self.listbox is self.parent.focus_get():
+
+        if self.listbox is not self.parent.focus_get():
             if direction == 'up':
                 self.move_img_up(0)
             else:
                 self.move_img_down(0)
 
-
     def fast_img_off(self, direction):
         """ Set flag for fast image change when key is being pressed once.
         """
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
             if direction == 'up':
                 self.move_img_up(0)
             else:
@@ -1523,9 +1547,6 @@ class BinViewer(Frame):
     def update_image(self, event, update_levels = False):
         """ Updates the current image on the screen.
         """
-
-        self.stop_video.set(True)  # Stop video every image update
-
 
         # Skip updating image when key is being held down
         if self.fast_img_change:
@@ -1543,22 +1564,25 @@ class BinViewer(Frame):
 
         updateImageLock = threading.RLock()
 
-        self.dir_path = self.dir_path.replace('/', os.sep)
-
         self.status_bar.config(text = "View image")  # Update status bar
         updateImageLock.acquire()
-        try: 
+        try:
             # Check if the list is empty. If it is, do nothing.
             self.current_image = self.listbox.get(self.listbox.curselection()[0])
         except:
             return 0
 
         updateImageLock.release()
-        
+
         try:
+            print('update_image: stopping video thread')
+            self.video_thread.stop()
+            print('waiting')
             self.video_thread.join()  # Wait for the video thread to finish
-            self.video_thread = None # Delete video thread
+            print('done...')
+            self.video_thread = None  # Delete video thread
         except:
+            self.video_thread = None  # Delete video thread
             pass
 
         # Only on image change, set proper ConstrainedEntry maximum values for Video and Frame filter start and end frames, only in Captured mode
@@ -1580,9 +1604,8 @@ class BinViewer(Frame):
                 self.frame_start_frame_entry.update_value(1500)
                 self.frame_end_frame_entry.update_value(1500)
 
-
         if self.mode.get() == 1:
-            
+
             # Prepare for Captured mode
             if event == 1:
 
@@ -1602,7 +1625,7 @@ class BinViewer(Frame):
         elif self.mode.get() == 2:
             # Detection mode preparations, find the right image and set the start and end frames into entry fields
             temp_img = self.detection_dict[self.current_image]  # Get image data
-            
+
             self.current_image = temp_img[0]
             start_frame = temp_img[1][0]  # Set start frame
             end_frame = temp_img[1][1]  # Set end frame
@@ -1617,33 +1640,32 @@ class BinViewer(Frame):
                 start_temp = start_frame
                 end_temp = end_frame
 
-            start_temp = 0 if start_temp<0 else start_temp
+            start_temp = 0 if start_temp < 0 else start_temp
 
             if (self.data_type.get() == 1) or (self.data_type.get() == 3):
-                
+
                 # CAMS data type
-                end_temp = 255 if end_temp>255 else end_temp
-            
-            else: 
+                end_temp = 255 if end_temp > 255 else end_temp
+
+            else:
                 # Skypatrol data dype
-                end_temp = 1500 if end_temp>1500 else end_temp
+                end_temp = 1500 if end_temp > 1500 else end_temp
                 self.meteor_no = temp_img[1][2]
 
             self.start_frame.set(start_temp)
             self.end_frame.set(end_temp)
 
-        elif self.mode.get() == 3: 
+        elif self.mode.get() == 3:
             # Prepare for confirmation
 
             self.confirmationListboxEntry = " ".join(self.current_image.split()[0:2])
             temp_info = self.confirmationDict[self.confirmationListboxEntry]
 
-
             # Prepare for plotting detections
             ffBinName, self.meteor_no = self.confirmationListboxEntry.split()
             detectionCoordinates, self.HT_rho, \
-            	self.HT_phi = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content, \
-            	ffBinName, int(float(self.meteor_no)))
+                self.HT_phi = get_FTPdetect_coordinates(self.ConfirmationInstance.FTPdetect_file_content,
+                ffBinName, int(float(self.meteor_no)))
 
             # Change to Maxpixel filter after each image change
             if (self.old_confirmation_image != self.current_image) or (self.old_filter.get() in (7, 10)):
@@ -1651,7 +1673,7 @@ class BinViewer(Frame):
                 stop_external_video = True
 
                 # Don't change to maxpixel if the image hasn't been changes
-                #if (self.old_confirmation_image != self.current_image) and (not self.old_filter.get() in (7, 10)):
+                # if (self.old_confirmation_image != self.current_image) and (not self.old_filter.get() in (7, 10)):
                 if (self.old_confirmation_image != self.current_image):
                     self.filter.set(1)
 
@@ -1667,12 +1689,12 @@ class BinViewer(Frame):
 
                     img_path = os.path.join(self.dir_path, current_image)
 
-                    if confirmation_video_app != None:
+                    if confirmation_video_app is not None:
                         # Delete old confirmation app, to prepare for showing a new one
                         confirmation_video_app.destroy()
                         confirmation_video_app = None
 
-                    if external_video_app != None:
+                    if external_video_app is not None:
                         # Delete old external video app, to prepare for showing a new one
                         external_video_app.destroy()
                         external_video_app = None
@@ -1683,10 +1705,10 @@ class BinViewer(Frame):
 
                         if confirmation_video_root is not None:
                             # Run confirmation video
-                            confirmation_video_app = ConfirmationVideo(confirmation_video_root) 
-                            confirmation_video_app.update(img_path, current_image, int(float(self.meteor_no)), \
-                                                            self.ConfirmationInstance.FTPdetect_file_content, \
-                                                            self.fps.get(), self.data_type.get())
+                            confirmation_video_app = ConfirmationVideo(confirmation_video_root)
+                            confirmation_video_app.update(img_path, current_image, int(float(self.meteor_no)),
+                                self.ConfirmationInstance.FTPdetect_file_content,
+                                self.fps.get(), self.data_type.get())
 
                     if self.externalVideoOn.get():
 
@@ -1703,22 +1725,21 @@ class BinViewer(Frame):
                             dimensions = self.externalVideoOn.get()
 
                             # Run external video
-                            external_video_app = ExternalVideo(external_video_root) 
-                            external_video_app.update(img_path, current_image, self.start_frame.get(), 
-                                                        self.end_frame.get(), self.fps.get(), self.data_type.get(), 
-                                                        dimensions, min_lvl = minv_temp, gamma = gamma_temp,
-                                                        max_lvl = maxv_temp, 
-                                                        external_guidelines=self.external_guidelines.get(), 
-                                                        HT_rho = self.HT_rho, HT_phi = self.HT_phi)
+                            external_video_app = ExternalVideo(external_video_root)
+                            external_video_app.update(img_path, current_image, self.start_frame.get(),
+                                self.end_frame.get(), self.fps.get(), self.data_type.get(),
+                                dimensions, min_lvl = minv_temp, gamma = gamma_temp,
+                                max_lvl = maxv_temp,
+                                external_guidelines=self.external_guidelines.get(),
+                                HT_rho = self.HT_rho, HT_phi = self.HT_phi)
 
                 self.old_confirmation_image = self.current_image
             self.current_image, self.meteor_no = self.current_image.split()[0:2]
 
-
-        img_path = self.dir_path+os.sep+self.current_image
+        img_path = os.path.join(self.dir_path, self.current_image)
 
         if not os.path.isfile(img_path):
-            tkMessageBox.showerror("File error", "File not found:\n"+img_path)
+            tkMessageBox.showerror("File error", "File not found:\n" + img_path)
             return 0
 
         dark_frame = None
@@ -1726,35 +1747,34 @@ class BinViewer(Frame):
         flat_frame_scalar = None
 
         # Do if the dark frame is on
-        if self.dark_status.get() == True: 
-            if not os.sep in self.dark_name.get():
-                dark_path = self.dir_path+os.sep+self.dark_name.get()
-            else:
-                dark_path = self.dark_name.get()
+        if self.dark_status.get() is True:
+            dark_path = self.dark_name.get()
+            pth, dark_fname = os.path.split(dark_path)
+            if pth == '':
+                dark_path = os.path.join(self.dir_path, dark_fname)
 
             try:
                 dark_frame = load_dark(dark_path)
             except:
-                tkMessageBox.showerror("Dark frame file error", "Cannot find dark frame file: "+self.dark_name.get())
+                tkMessageBox.showerror("Dark frame file error", "Cannot find dark frame file: " + self.dark_name.get())
                 self.dark_status.set(False)
 
         # Do if the flat frame is on
-        if self.flat_status.get() == True: 
-            if not os.sep in self.flat_name.get():
-                flat_path = self.dir_path+os.sep+self.flat_name.get()
-            else:
-                flat_path = self.flat_name.get()
-
+        if self.flat_status.get() is True:
+            flat_path = self.flat_name.get()
+            pth, flat_fname = os.path.split(flat_path)
+            if pth == '':
+                flat_path = os.path.join(self.dir_path, flat_fname)
             try:
                 flat_frame, flat_frame_scalar = load_flat(flat_path)
             except:
-                tkMessageBox.showerror("Flat frame file error", "Cannot find flat frame file: "+self.flat_name.get())
+                tkMessageBox.showerror("Flat frame file error", "Cannot find flat frame file: " + self.flat_name.get())
                 self.flat_status.set(False)
 
         # Make changes if the filter has changed
         if self.old_filter.get() != self.filter.get():
             # Set all butons to be active
-            self.dark_chk.config(state = NORMAL) 
+            self.dark_chk.config(state = NORMAL)
             self.flat_chk.config(state = NORMAL)
             self.deinterlace_chk.config(state = NORMAL)
             self.hold_levels_chk.config(state = NORMAL)
@@ -1762,6 +1782,7 @@ class BinViewer(Frame):
             self.max_lvl_scale.config(state = NORMAL)
             self.min_lvl_scale.config(state = NORMAL)
             self.gamma_scale.config(state = NORMAL)
+            self.invert_chk.config(state = NORMAL)
 
             self.windowMenu.entryconfig("Save animation", state = "normal")
             self.frame_scale_frame.set(False)
@@ -1769,7 +1790,7 @@ class BinViewer(Frame):
             self.update_layout()
 
             # Frames filter
-            if self.filter.get() == 7: 
+            if self.filter.get() == 7:
                 self.frame_scale.config(state = NORMAL)
                 self.old_animation_frame.set(self.save_animation_frame.get())
 
@@ -1789,8 +1810,8 @@ class BinViewer(Frame):
                 img_array = markDetections(img_array, detectionCoordinates, self.edge_marker.get())
 
         elif self.filter.get() == 2:  # Colorized
-            
-            if (update_levels == True) or (self.hold_levels.get() == True):  # Adjust levels
+
+            if (update_levels is True) or (self.hold_levels.get() is True):  # Adjust levels
                 minv_temp = self.min_lvl_scale.get()
                 gamma_temp = self.gamma.get()
                 maxv_temp = self.max_lvl_scale.get()
@@ -1805,10 +1826,9 @@ class BinViewer(Frame):
             self.deinterlace_chk.config(state = DISABLED)
 
             img_array = colorize_maxframe(readFF(img_path), minv_temp, gamma_temp, maxv_temp)
-            
+
             self.img_name_type = 'colorized'
             self.old_filter.set(2)
-
 
         elif self.filter.get() == 3:  # Detection only
 
@@ -1821,7 +1841,7 @@ class BinViewer(Frame):
             elif self.mode.get() == 2:  # Deteced mode
                 self.dark_chk.config(state = NORMAL)
                 self.deinterlace_chk.config(state = NORMAL)
-                
+
                 img_array = get_detection_only(readFF(img_path), self.start_frame.get(), self.end_frame.get(), flat_frame, flat_frame_scalar, dark_frame, self.deinterlace.get())
                 self.img_name_type = 'detected_only'
 
@@ -1834,25 +1854,24 @@ class BinViewer(Frame):
                 self.img_name_type = 'detected_only'
 
             self.old_filter.set(3)
-                    
 
         elif self.filter.get() == 4:  # Average pixel
             img_array = process_array(readFF(img_path).avepixel, flat_frame, flat_frame_scalar, dark_frame, self.deinterlace.get())
-            
+
             self.img_name_type = 'avepixel'
             self.old_filter.set(4)
 
         elif self.filter.get() == 5:  # Show only odd frame
             self.deinterlace_chk.config(state = DISABLED)
             img_array = process_array(readFF(img_path).maxpixel, flat_frame, flat_frame_scalar, dark_frame, deinterlace = False, field = 1)
-            
+
             self.img_name_type = 'odd'
             self.old_filter.set(5)
 
         elif self.filter.get() == 6:  # Show only even frame
             self.deinterlace_chk.config(state = DISABLED)
             img_array = process_array(readFF(img_path).maxpixel, flat_frame, flat_frame_scalar, dark_frame, deinterlace = False, field = 2)
-            
+
             self.img_name_type = 'even'
             self.old_filter.set(6)
 
@@ -1877,10 +1896,10 @@ class BinViewer(Frame):
             img_array = process_array(buildFF(readFF(img_path), self.frame_scale.get()), flat_frame, flat_frame_scalar, dark_frame, self.deinterlace.get())
 
             self.set_timestamp(self.frame_scale.get())
-            
-            self.img_name_type = 'frame_'+str(self.frame_scale.get())
+
+            self.img_name_type = 'frame_' + str(self.frame_scale.get())
             self.old_filter.set(7)
-        
+
         elif self.filter.get() == 10:
             # Show video
 
@@ -1900,7 +1919,6 @@ class BinViewer(Frame):
             self.gamma_scale.config(state = DISABLED)
 
             self.temp_frame.set(self.start_frame.get())  # Set temporary frame to start frame
-            self.stop_video.set(False)  # Set "stop video" flag to False -> video will run
 
             self.video_thread = Video(app, img_path)  # Create video object, pass binViewer class (app) to video object
             self.video_thread.daemon = True
@@ -1911,9 +1929,8 @@ class BinViewer(Frame):
 
             return 0
 
-
-        # Apply Enhance stars if on
-        if self.arcsinh_status.get():
+        # Apply Enhance stars if on, or if the image is inverted
+        if self.arcsinh_status.get() or self.invert.get():
             # Apply arcshin on an image
             limg = np.arcsinh(img_array)
 
@@ -1925,37 +1942,40 @@ class BinViewer(Frame):
             high = np.percentile(limg, 99.8)
 
             # Rescale image levels with the given range
-            img_array = (rescaleIntensity(limg, in_range=(low,high))*255).astype(np.uint8)
-
+            img_array = (rescaleIntensity(limg, in_range=(low, high)) * 255).astype(np.uint8)
 
         # Adjust levels
-        if (update_levels == True) or (self.hold_levels.get() == True):
+        if (update_levels is True) or (self.hold_levels.get() is True):
             if self.filter.get() != 2:
                 img_array = adjust_levels(img_array, self.min_lvl_scale.get(), self.gamma.get(), self.max_lvl_scale.get())
 
-        elif self.hold_levels.get() == True:
-            pass # Don't reset values if hold levels button is on
+        elif self.hold_levels.get() is True:
+            pass  # Don't reset values if hold levels button is on
         else:
             self.min_lvl_scale.set(0)
             self.max_lvl_scale.set(255)
             self.gamma_scale.set(0)
             self.gamma.set(1)
 
-
         updateImageLock.acquire()
 
         self.current_image_cols = len(img_array[0])
 
         self.img_data = img_array
-        #temp_image = ImageTk.PhotoImage(img.fromarray(img_array.astype(np.uint8)).convert("RGB")) #Prepare for showing
+        # temp_image = ImageTk.PhotoImage(img.fromarray(img_array.astype(np.uint8)).convert("RGB")) #Prepare for showing
 
-        
         # Prepare for showing
         resize_fact = self.image_resize_factor.get()
-        temp_image = ImageTk.PhotoImage(img.fromarray(img_array.astype(np.uint8)).resize((img_array.shape[1]//resize_fact, img_array.shape[0]//resize_fact), img.BILINEAR).convert("RGB"))
+        if resize_fact <= 0:
+            resize_fact = 1
+        imgdata = img.fromarray(img_array.astype(np.uint8)).resize((img_array.shape[1] // resize_fact, img_array.shape[0] // resize_fact), img.BILINEAR).convert("RGB")
+
+        if self.invert.get():
+            imgdata = ImageChops.invert(imgdata)
+        temp_image = ImageTk.PhotoImage(imgdata)
 
         self.imagelabel.configure(image = temp_image)
-        self.imagelabel.image = temp_image #For reference, otherwise it doesn't work
+        self.imagelabel.image = temp_image  # For reference, otherwise it doesn't work
         updateImageLock.release()
 
         # Generate timestamp
@@ -1964,20 +1984,22 @@ class BinViewer(Frame):
 
         self.old_image = self.current_image
 
+        return 0
+
     def set_timestamp(self, fps = None, image_name = None):
-        """ Sets timestamp with given parameters. 
+        """ Sets timestamp with given parameters.
         """
 
         timestampLock = threading.RLock()
         timestampLock.acquire()
         if fps is None:
-            #fps = " FFF"
+            # fps = " FFF"
             fps = ""
         else:
             fps = str(fps).zfill(4)
 
         # Get image name from argument, if it was passed
-        if image_name != None:
+        if image_name is not None:
             current_image = image_name
         else:
             current_image = self.current_image
@@ -1993,7 +2015,7 @@ class BinViewer(Frame):
 
                 # CAMS data type (OLD)
                 if format_type > 0:
-                    timestamp = x[1][0:4]+ "-" + x[1][4:6] + "-" + x[1][6:8] + " " + x[2][0:2] + ":" \
+                    timestamp = x[1][0:4] + "-" + x[1][4:6] + "-" + x[1][6:8] + " " + x[2][0:2] + ":" \
                         + x[2][2:4] + ":" + x[2][4:6] + "." + x[3] + " " + fps
 
                 # CAMS data type (NEW)
@@ -2003,18 +2025,15 @@ class BinViewer(Frame):
                 else:
                     timestamp = ""
 
-
-
             else:
 
                 # Skypatrol data type
                 img_path = os.path.join(self.dir_path, current_image)
                 (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(img_path)
-                timestamp = time.strftime("%Y-%m-%d %H:%M:%S.000", time.gmtime(mtime))+" "+fps
-
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S.000", time.gmtime(mtime)) + " " + fps
 
         else:
-            #timestamp = "YYYY-MM-DD HH:MM.SS.mms  FFF"
+            # timestamp = "YYYY-MM-DD HH:MM.SS.mms  FFF"
             timestamp = "YYYY-MM-DD HH:MM.SS.mms"
 
         # Change the timestamp label
@@ -2022,23 +2041,11 @@ class BinViewer(Frame):
         timestampLock.release()
 
     def wxDirchoose(self, initialdir, title, _selectedDir = '.'):
-        """ Opens a dialog for choosing a directory. 
+        """ Opens a dialog for choosing a directory.
         """
-        _userCancel = ''
+        folder_selected = tkFileDialog.askdirectory(title=title, initialdir=initialdir) # Returns empty string in case of cancel
 
-        app = wx.App()
-
-        dialog = wx.DirDialog(None, title, style=1, defaultPath=initialdir, pos=(10, 10))
-
-        if dialog.ShowModal() == wx.ID_OK:
-            _selectedDir = dialog.GetPath()
-            return _selectedDir
-
-        else:
-            dialog.Destroy()
-
-        return _userCancel
-
+        return folder_selected
 
     def askdirectory(self, dir_path=''):
         """ Shows the directory dialog, open the directory in binviewer and returns a selected directoryname.
@@ -2047,20 +2054,28 @@ class BinViewer(Frame):
             dir_path: [str] Directory to open. If given, the file dialog will not be shown.
         """
 
+        old_dir_path = self.dir_path
+
         self.dir_path = dir_path
 
         # If changing during confirmation
         if self.mode.get() == 3:
+            # restore previous dir_path to avoid confirmationEnd crashing
+            self.dir_path = old_dir_path
             if self.confirmationEnd() == 0:
                 return 0
+            # and now reset it back again
+            self.dir_path = dir_path
 
         self.filter.set(1)
 
         # Stop video every image update
-        self.stop_video.set(True)
         try:
+            self.video_thread.stop()
             # Wait for the video thread to finish
-            self.video_thread.join() 
+            print('waiting')
+            self.video_thread.join()
+            print('done')
             # Delete video thread
             self.video_thread = None
         except:
@@ -2068,15 +2083,11 @@ class BinViewer(Frame):
 
         self.status_bar.config(text = "Opening directory...")
 
-        old_dir_path = self.dir_path
+        if self.dir_path == '':
 
-
-        if not self.dir_path:
-        
             # Opens the file dialog
-            self.dir_path = self.wxDirchoose(initialdir = self.dir_path, \
+            self.dir_path = self.wxDirchoose(initialdir = old_dir_path,
                 title = "Open the directory with FF files, then click OK")
-
 
         if self.dir_path == '':
 
@@ -2086,12 +2097,12 @@ class BinViewer(Frame):
                 self.dir_path = os.getcwd()
 
         # Update listbox
-        self.update_listbox(self.get_bin_list())  
+        self.update_listbox(self.get_bin_list())
 
         self.update_data_type()
-        
+
         # Update dir label
-        self.parent.wm_title("CMN_binViewer: " + self.dir_path)  
+        self.parent.wm_title("CMN_binViewer: " + self.dir_path)
         self.mode.set(1)
         self.filter.set(1)
         self.change_mode()
@@ -2099,7 +2110,6 @@ class BinViewer(Frame):
         self.move_top(0)  # Move listbox cursor to the top
 
         self.write_config()
-
 
     def get_bin_list(self):
         """ Get a list of FF*.bin files in a given directory.
@@ -2123,16 +2133,16 @@ class BinViewer(Frame):
             tkMessageBox.showerror("Image error", "No image selected! Saving aborted.")
             return 0
 
-        img_name = current_image+"_"+self.img_name_type+'.'+extension
-        img_path = self.dir_path+os.sep+img_name
-        if save_as == True:
-            img_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save as...", initialfile = img_name, defaultextension = "."+extension)
+        img_name = current_image + "_" + self.img_name_type + '.' + extension
+        img_path = os.path.join(self.dir_path, img_name)
+        if save_as is True:
+            img_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save as...", initialfile = img_name, defaultextension = "." + extension)
             if img_path == '':
                 return 0
 
         saveImage(self.img_data, img_path, self.print_name_status.get())
 
-        self.status_bar.config(text = "Image saved: "+img_name)
+        self.status_bar.config(text = "Image saved: " + img_name)
 
     def copy_bin_to_sorted(self, event):
         """ Copies the current image FF*.bin file to the given directory.
@@ -2140,62 +2150,71 @@ class BinViewer(Frame):
         if self.current_image == '':
             return 0
 
-        if (os.sep in self.sort_folder_path.get()) or ('/' in self.sort_folder_path.get()):
-            sorted_dir = self.sort_folder_path.get()
-        else:
-            sorted_dir = self.dir_path+os.sep+self.sort_folder_path.get()
+        sorted_dir = self.sort_folder_path.get()
+        pth, sort_pth = os.path.split(sorted_dir)
+        if pth == '':
+            sorted_dir = os.path.join(self.dir_path, sort_pth)
 
         try:
             mkdir_p(sorted_dir)
         except:
-            tkMessageBox.showerror("Path error", "The path does not exist or it is a root directory (e.g. C:\\): "+sorted_dir)
+            tkMessageBox.showerror("Path error", "The path does not exist or it is a root directory (e.g. C:\\): " + sorted_dir)
             return 0
 
         try:
-            copy2(self.dir_path+os.sep+self.current_image, sorted_dir+os.sep+self.current_image) #Copy the file
+            copy2(os.path.join(self.dir_path, self.current_image), os.path.join(sorted_dir, self.current_image))  # Copy the file
         except:
-            tkMessageBox.showerror("Copy error", "Could not copy file: "+self.current_image)
+            tkMessageBox.showerror("Copy error", "Could not copy file: " + self.current_image)
             return 0
 
-        self.status_bar.config(text = "Copied: "+self.current_image) #Change the status bar
+        self.status_bar.config(text = "Copied: " + self.current_image)  # Change the status bar
 
     def open_current_folder(self, event):
         """Opens current directory in windows explorer.
         """
 
-        sorted_directory = self.dir_path+os.sep+self.sort_folder_path.get()
+        sorted_directory = self.sort_folder_path.get()
+        pth, sort_pth = os.path.split(sorted_directory)
+        if pth == '':
+            sorted_directory = os.path.join(self.dir_path, sort_pth)
         try:
-            os.startfile(sorted_directory)
+            if sys.platform == 'win32':
+                os.startfile(sorted_directory)
+            else:
+                opener ="open" if sys.platform == "darwin" else "xdg-open"
+                subprocess.call([opener, sorted_directory])
         except:
             try:
-                os.startfile(self.dir_path)
+                if sys.platform == 'win32':
+                    os.startfile(self.dir_path)
+                else:
+                    opener ="open" if sys.platform == "darwin" else "xdg-open"
+                    subprocess.call([opener, self.dir_path])
             except:
                 tkMessageBox.showerror("Path not found", "Sorted folder is not created!")
                 return 1
+
         return 0
 
     def make_master_dark(self):
         """ Makes the master dark frame.
         """
         self.status_bar.config(text = "Making master dark frame, please wait...")
-        
+
         dark_dir = self.wxDirchoose(initialdir = self.dir_path, title = "Open the directory with dark frames, then click OK")
 
-        if dark_dir == '': 
+        if dark_dir == '':
             self.status_bar.config(text = "Master dark frame making aborted!")
             return 0
 
         dark_file = tkFileDialog.asksaveasfilename(initialdir = dark_dir, parent = self.parent, title = "Choose the master dark file name", initialfile = "dark.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
 
-        if dark_file == '': 
+        if dark_file == '':
             self.status_bar.config(text = "Master dark frame making aborted!")
             return 0
 
-        dark_dir = dark_dir.replace("/", os.sep)
-        dark_file = dark_file.replace("/", os.sep)
-
-        if (dark_file != '') and (dark_dir!=''):
-            if make_flat_frame(dark_dir, dark_file, col_corrected = False, dark_frame = False, data_type=self.data_type.get()) == False:
+        if (dark_file != '') and (dark_dir != ''):
+            if make_flat_frame(dark_dir, dark_file, col_corrected = False, dark_frame = False, data_type=self.data_type.get()) is False:
                 tkMessageBox.showerror("Master dark frame", "The folder is empty!")
                 self.status_bar.config(text = "Master dark frame failed!")
                 return 0
@@ -2211,37 +2230,33 @@ class BinViewer(Frame):
         """
 
         self.status_bar.config(text = "Making master flat frame, please wait...")
-        
+
         flat_dir = self.wxDirchoose(initialdir = self.dir_path, title = "Open the directory with flat frames, then click OK")
-        if flat_dir == '': 
+        if flat_dir == '':
             self.status_bar.config(text = "Master flat frame making aborted!")
             return 0
         flat_file = tkFileDialog.asksaveasfilename(initialdir = flat_dir, parent = self.parent, title = "Choose the master flat file name", initialfile = "flat.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
-        if flat_file == '': 
+        if flat_file == '':
             self.status_bar.config(text = "Master flat frame making aborted!")
             return 0
 
-        flat_dir = flat_dir.replace("/", os.sep)
-        flat_file = flat_file.replace("/", os.sep)
-
         dark_file = tkFileDialog.askopenfilename(initialdir = flat_dir, parent = self.parent, title = "OPTIONAL: Choose dark frame, if any. Click cancel for no dark frame.", initialfile = "dark.bmp", defaultextension = ".bmp", filetypes = [('BMP files', '.bmp')])
 
-        
         if dark_file != '':
             dark_frame = load_dark(dark_file)
         else:
             dark_frame = False
-        if make_flat_frame(flat_dir, flat_file, col_corrected = False, dark_frame = dark_frame) == False:
+
+        if make_flat_frame(flat_dir, flat_file, col_corrected = False, dark_frame = dark_frame, data_type=self.data_type.get()) is False:
             tkMessageBox.showerror("Master flat frame", "The folder is empty!")
             self.status_bar.config(text = "Master flat frame failed!")
             return 0
-        
 
         self.status_bar.config(text = "Master flat frame done!")
         tkMessageBox.showinfo("Master flat frame", "Master flat frame done!")
 
     def fireball_deinterlacing_process(self, logsort_export=False, no_background=False):
-        """ Process individual frames (from start frame to end frame) by applying calibartion and deinterlacing them field by field. Used for manual fireball processing. 
+        """ Process individual frames (from start frame to end frame) by applying calibration and deinterlacing them field by field. Used for manual fireball processing.
         """
 
         current_image = self.current_image
@@ -2253,15 +2268,15 @@ class BinViewer(Frame):
         flat_frame = None
         flat_frame_scalar = None
 
-        if self.dark_status.get() == True:
-            dark_path = self.dir_path+os.sep+self.dark_name.get()
+        if self.dark_status.get() is True:
+            dark_path = os.path.join(self.dir_path, self.dark_name.get())
             try:
                 dark_frame = load_dark(dark_path)
             except:
                 pass
 
-        if self.flat_status.get() == True:
-            flat_path = self.dir_path+os.sep+self.flat_name.get()
+        if self.flat_status.get() is True:
+            flat_path = os.path.join(self.dir_path, self.flat_name.get())
             try:
                 flat_frame, flat_frame_scalar = load_flat(flat_path)
             except:
@@ -2275,7 +2290,7 @@ class BinViewer(Frame):
         if save_path == '':
             return '', 0
 
-        image_list = get_processed_frames(os.path.join(self.dir_path, current_image), save_path + os.sep, self.data_type.get(), flat_frame, flat_frame_scalar, dark_frame, self.start_frame.get(), self.end_frame.get(), logsort_export, no_background = no_background)
+        image_list = get_processed_frames(os.path.join(self.dir_path, current_image), save_path, self.data_type.get(), flat_frame, flat_frame_scalar, dark_frame, self.start_frame.get(), self.end_frame.get(), logsort_export, no_background = no_background)
 
         if not logsort_export:
             tkMessageBox.showinfo("Saving progress", "Saving done!")
@@ -2283,7 +2298,6 @@ class BinViewer(Frame):
             self.status_bar.config(text ="Processing done!")
 
         return save_path, image_list
-
 
     def make_gif(self):
         """ Makes a GIF animation file with given options.
@@ -2298,15 +2312,15 @@ class BinViewer(Frame):
         flat_frame = None
         flat_frame_scalar = None
 
-        if self.dark_status.get() == True:
-            dark_path = self.dir_path+os.sep+self.dark_name.get()
+        if self.dark_status.get() is True:
+            dark_path = os.path.join(self.dir_path, self.dark_name.get())
             try:
                 dark_frame = load_dark(dark_path)
             except:
                 pass
 
-        if self.flat_status.get() == True:
-            flat_path = self.dir_path+os.sep+self.flat_name.get()
+        if self.flat_status.get() is True:
+            flat_path = os.path.join(self.dir_path, self.flat_name.get())
             try:
                 flat_frame, flat_frame_scalar = load_flat(flat_path)
             except:
@@ -2314,17 +2328,17 @@ class BinViewer(Frame):
 
         self.status_bar.config(text ="Making GIF, please wait... It can take up to 15 or more seconds, depending on the size and options")
 
-        gif_name = current_image.split('.')[0]+"fr_"+str(self.start_frame.get())+"-"+str(self.end_frame.get())+".gif"
+        gif_name = current_image.split('.')[0] + "fr_" + str(self.start_frame.get()) + "-" + str(self.end_frame.get()) + ".gif"
 
-        gif_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save GIF animation", initialfile = gif_name, defaultextension = ".gif").replace("/", os.sep)
+        gif_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save GIF animation", initialfile = gif_name, defaultextension = ".gif")
 
         # Abort GIF making if no file is chosen
-        if gif_path == '': 
+        if gif_path == '':
             return 0
 
         # Get the repeat variable (the animation will loop if True)
-        repeat_temp = self.repeat.get() 
-        if (repeat_temp == 0) or (repeat_temp == False):
+        repeat_temp = self.repeat.get()
+        if (repeat_temp == 0) or (repeat_temp is False):
             repeat_temp = False
         else:
             repeat_temp = True
@@ -2341,8 +2355,7 @@ class BinViewer(Frame):
         tkMessageBox.showinfo("GIF progress", "GIF saved!")
 
         # Write FPS to config file
-        self.write_config() 
-
+        self.write_config()
 
     def get_detected_list(self, minimum_frames = 0):
         """ Gets a list of FF_bin files from the FTPdetectinfo with a list of frames. Used for composing the image while in DETECT mode.
@@ -2350,12 +2363,12 @@ class BinViewer(Frame):
         minimum_frames: the smallest number of detections for showing the meteor
         """
         minimum_frames = int(self.minimum_frames.get())
-        
+
         def get_frames(frame_list):
             """Gets frames for given FF*.bin file in FTPdetectinfo.
             """
             # Times 2 because len(frames) actually contains every half-frame also
-            if len(frame_list)<minimum_frames*2: 
+            if len(frame_list) < minimum_frames * 2:
                 ff_bin_list.pop()
                 return None
             min_frame = int(float(frame_list[0]))
@@ -2367,20 +2380,19 @@ class BinViewer(Frame):
             """
             str_ff_bin_list = []
             for line in ff_bin_list:
-                str_ff_bin_list.append(line[0]+" Fr "+str(line[1][0]).zfill(3)+" - "+str(line[1][1]).zfill(3))
+                str_ff_bin_list.append(line[0] + " Fr " + str(line[1][0]).zfill(3) + " - " + str(line[1][1]).zfill(3))
 
             return str_ff_bin_list
 
-
-        ftpdetect_file = [line for line in os.listdir(self.dir_path) if ("FTPdetectinfo_" in line) and (".txt" in line) and (not "original" in line)]
+        ftpdetect_file = [line for line in os.listdir(self.dir_path) if ("FTPdetectinfo_" in line) and (".txt" in line) and ("original" not in line)]
         if len(ftpdetect_file) == 0:
             tkMessageBox.showerror("FTPdetectinfo error", "FTPdetectinfo file not found!")
             return False
         ftpdetect_file = ftpdetect_file[0]
         try:
-            FTPdetect_file_content = open(self.dir_path+os.sep+ftpdetect_file, 'r').readlines()
+            FTPdetect_file_content = open(os.path.join(self.dir_path, ftpdetect_file), 'r').readlines()
         except:
-            tkMessageBox.showerror("File error", "Could not open file: "+ftpdetect_file)
+            tkMessageBox.showerror("File error", "Could not open file: " + ftpdetect_file)
             return False
 
         # Solving issue when no meteors are in the file
@@ -2395,9 +2407,8 @@ class BinViewer(Frame):
 
             if ("-------------------------------------------------------" in line):
                 get_frames(frame_list)
-                
 
-            if skip>0:
+            if skip > 0:
                 skip -= 1
                 continue
 
@@ -2409,7 +2420,7 @@ class BinViewer(Frame):
                 frame_list = None
                 frame_list = []
                 continue
-            
+
             frame_list.append(line.split()[0])
 
         # Check if there are no detections
@@ -2417,11 +2428,11 @@ class BinViewer(Frame):
             return [], []
 
         # Writing the last FF bin file frames in a list
-        if not '----' in frame_list[-1]:
-            get_frames(frame_list) 
+        if '----' not in frame_list[-1]:
+            get_frames(frame_list)
 
         # Converts list to a list of strings and returns it
-        return ff_bin_list, convert2str(ff_bin_list) 
+        return ff_bin_list, convert2str(ff_bin_list)
 
     def get_logsort_list(self, logsort_name = "LOG_SORT.INF", minimum_frames = 0):
         """ Gets a list of BMP files from the LOG_SORT.INF with a list of frames. Used for composing the image while in DETECT mode.
@@ -2434,7 +2445,7 @@ class BinViewer(Frame):
             """Gets frames for given BMP file in LOGSORT.
             """
             # Times 2 because len(frames) actually contains every half-frame also
-            if len(frame_list)<minimum_frames*2: 
+            if len(frame_list) < minimum_frames * 2:
                 image_list.pop()
                 return None
             min_frame = int(float(frame_list[0]))
@@ -2442,23 +2453,23 @@ class BinViewer(Frame):
             image_list[-1].append((min_frame, max_frame, met_no))
 
         def convert2str(ff_bin_list):
-            """ Converts list format: [['FF*.bin', (start_frame, end_frame)], ... ] to string format ['FF*.bin Fr start_frame - end_frame']. 
+            """ Converts list format: [['FF*.bin', (start_frame, end_frame)], ... ] to string format ['FF*.bin Fr start_frame - end_frame'].
             """
             str_ff_bin_list = []
             for line in ff_bin_list:
-                str_ff_bin_list.append(line[0]+" Fr "+str(line[1][0]).zfill(4)+" - "+str(line[1][1]).zfill(4)+" meteorNo: "+str(line[1][2]).zfill(4))
+                str_ff_bin_list.append(line[0] + " Fr " + str(line[1][0]).zfill(4) + " - " + str(line[1][1]).zfill(4) + " meteorNo: " + str(line[1][2]).zfill(4))
 
             return str_ff_bin_list
 
-        logsort_path = self.dir_path+os.sep+logsort_name
-        
+        logsort_path = os.path.join(self.dir_path, logsort_name)
+
         if not os.path.isfile(logsort_path):
             tkMessageBox.showerror("LOG_SORT.INF error", "LOG_SORT.INF file not found!")
 
         try:
             logsort_contents = open(logsort_path, 'r').readlines()
         except:
-            tkMessageBox.showerror("File error", "Could not open file: "+logsort_path)
+            tkMessageBox.showerror("File error", "Could not open file: " + logsort_path)
             return False
 
         # Return empty list if logsort is empty
@@ -2468,6 +2479,7 @@ class BinViewer(Frame):
         image_list = []
         frame_list = []
         met_no = 0
+        old_met = -1
         first = True
         for line in logsort_contents[5:]:
 
@@ -2476,11 +2488,11 @@ class BinViewer(Frame):
 
             line = line.split()
 
-            img_name = line[4].split('_')[1]+'.bmp'
+            img_name = line[4].split('_')[1] + '.bmp'
             met_no = int(line[0])
 
-            if not img_name in [image[0] for image in image_list] or old_met != met_no:
-                if first != True:
+            if img_name not in [image[0] for image in image_list] or old_met != met_no:
+                if first is not True:
                     get_frames(frame_list, met_no)
                 else:
                     first = False
@@ -2491,7 +2503,7 @@ class BinViewer(Frame):
                 frame_list = None
                 frame_list = []
                 continue
-                
+
             frame_list.append(line[1])
 
         get_frames(frame_list, met_no)
@@ -2499,29 +2511,28 @@ class BinViewer(Frame):
         return image_list, convert2str(image_list)
 
     def update_scales(self, value):
-        """ Updates the size of levels scales, to make the appearence that there are 2 sliders on one scale. 
+        """ Updates the size of levels scales, to make the appearence that there are 2 sliders on one scale.
         """
         size_var = 0.8
         min_value = self.min_lvl_scale.get()
         max_value = self.max_lvl_scale.get()
-        middle = (min_value+max_value)/2
+        middle = (min_value + max_value) / 2
 
         min_size = middle * size_var
         max_size = (255 - middle) * size_var
 
         self.min_lvl_scale.config(from_ = 0, to = middle - 1, length = min_size)
-        self.max_lvl_scale.config(from_ = middle +1, to = 255, length = max_size)
+        self.max_lvl_scale.config(from_ = middle + 1, to = 255, length = max_size)
 
-        self.gamma.set(1/10**(self.gamma_scale.get()))
-        self.gamma_scale.config(label = "Gamma:             "+"{0:.2f}".format(round(self.gamma.get(), 2)))
+        self.gamma.set(1 / 10**(self.gamma_scale.get()))
+        self.gamma_scale.config(label = "Gamma:             " + "{0:.2f}".format(round(self.gamma.get(), 2)))
 
         self.update_image(0, update_levels = True)
-        
 
     def change_mode(self):
         """ Changes the current mode.
         """
-        if self.mode.get()==1:
+        if self.mode.get() == 1:
             # Captured mode
 
             # Enable all filters
@@ -2532,24 +2543,24 @@ class BinViewer(Frame):
             self.even_btn.config(state = NORMAL)
 
             # Disable the entry of minimum frame number
-            self.min_frames_entry.config(state = DISABLED) 
+            self.min_frames_entry.config(state = DISABLED)
 
             # Set filter to maxframe
             self.filter.set(1)
 
             # Preserve the image position
             old_image = self.current_image
-            
+
             temp_bin_list = self.get_bin_list()
 
             # Update listbox
             self.update_listbox(temp_bin_list)
-            
+
             if old_image in temp_bin_list:
                 temp_index = temp_bin_list.index(old_image)
 
                 # Move to old image position
-                self.moveIndex(temp_index) 
+                self.moveIndex(temp_index)
             else:
                 # Move listbox cursor to the top
                 self.move_top(0)
@@ -2557,7 +2568,7 @@ class BinViewer(Frame):
             self.start_frame.set(0)
 
             if (self.data_type.get() == 1) or (self.data_type.get() == 3):
-                
+
                 # CAMS data type
                 self.end_frame.set(255)
                 self.frame_scale.config(to = 255)
@@ -2567,19 +2578,19 @@ class BinViewer(Frame):
                 self.end_frame.set(1500)
                 self.frame_scale.config(to = 1500)
 
-        elif self.mode.get() == 2: 
-            
+        elif self.mode.get() == 2:
+
             # Detected mode
             if (self.data_type.get() == 1) or (self.data_type.get() == 3):
                 # CAMS data type
 
                 # Get a list of FF*.bin files from FTPdetectinfo
                 detected_list = self.get_detected_list()
-            else: 
+            else:
                 # Skypatrol data type
                 detected_list = self.get_logsort_list()
 
-            if detected_list == False:
+            if detected_list is False:
                 self.mode.set(1)
                 return 0
             elif not detected_list:
@@ -2595,9 +2606,9 @@ class BinViewer(Frame):
             self.detection_dict = dict(zip(str_ff_bin_list, ff_bin_list))
 
             # Dont change if video filter was set
-            if not self.filter.get() == 10: 
+            if not self.filter.get() == 10:
                 # Set filter to Detection only
-                self.filter.set(3) 
+                self.filter.set(3)
 
             # Disable all other filters
             self.maxpixel_btn.config(state = DISABLED)
@@ -2638,7 +2649,7 @@ class BinViewer(Frame):
 
             listbox_entries = []
             for key in self.confirmationDict:
-                listbox_entries.append(key+' '+self.confirmationDict[key][0])
+                listbox_entries.append(key + ' ' + self.confirmationDict[key][0])
 
             self.update_listbox(listbox_entries)
             self.move_top(0)
@@ -2655,7 +2666,6 @@ class BinViewer(Frame):
                 for color in colors:
                     yield color
 
-
         # Used for coloring same image detections with the same color
         colorGen = _colorGenerator()
 
@@ -2665,8 +2675,10 @@ class BinViewer(Frame):
             return 0
 
         confirmationDirectoryName = "ConfirmedFiles"
-        
-        upDir = self.dir_path.split(os.sep)[-2]
+        rejectionDirectoryName = "RejectedFiles"
+
+        upDir, nightDir = os.path.split(self.dir_path)
+        up2Dir, upDir = os.path.split(upDir)
         if upDir == "CapturedFiles":
             if not tkMessageBox.askyesno("Directory name", "Are you sure you want to do confirmation on CapturedFiles?"):
                 return 0
@@ -2674,11 +2686,11 @@ class BinViewer(Frame):
             tkMessageBox.showerror("Directory error", "You can only do confirmation in ArchivedFiles or CapturedFiles directory!")
             return 0
 
-        nightDir = self.dir_path.split(os.sep)[-1]
-
-        confirmationDirectory = (os.sep).join(self.dir_path.split(os.sep)[:-2]+[confirmationDirectoryName, nightDir])
-
+        confirmationDirectory = os.path.join(up2Dir, confirmationDirectoryName, nightDir)
         mkdir_p(confirmationDirectory)
+
+        rejectionDirectory = os.path.join(up2Dir, rejectionDirectoryName, nightDir)
+        mkdir_p(rejectionDirectory)
 
         image_list = []
         ftp_detect_list = []
@@ -2713,11 +2725,10 @@ class BinViewer(Frame):
             ftp_choice.set(0)
             for i, ftpdetect_name in enumerate(ftp_detect_list):
                 b = Radiobutton(ftpdetectinfo_window, text=ftpdetect_name, variable=ftp_choice, value=i)
-                b.pack(anchor=W)
-
+                b.pack(anchor=tk.W)
 
             # Add a closing button
-            b = Button(ftpdetectinfo_window, text="OK", command=lambda:ftpdetectinfo_window.destroy())
+            b = Button(ftpdetectinfo_window, text="OK", command=lambda: ftpdetectinfo_window.destroy())
             b.pack()
 
             # Wait until the FTPdetectinfo file is chosen
@@ -2725,7 +2736,6 @@ class BinViewer(Frame):
 
             # Choose the selected FTPdetectinfo file
             ftpDetectFile = ftp_detect_list[ftp_choice.get()]
-
 
         elif len(ftp_detect_list) == 1:
             # Choose the only one found FTPdetectinfo file
@@ -2736,11 +2746,11 @@ class BinViewer(Frame):
             ftpDetectFile = ''
 
         if ftpDetectFile == '':
-            tkMessageBox.showerror("FTPdetectinfo error", "No FTPdetectinfo file could be found in directory: "+self.dir_path)
+            tkMessageBox.showerror("FTPdetectinfo error", "No FTPdetectinfo file could be found in directory: " + self.dir_path)
             self.confirmationFinish()
             return 0
 
-        self.ConfirmationInstance = Confirmation(image_list, self.dir_path+os.sep+ftpDetectFile, confirmationDirectory, minimum_frames = 0)
+        self.ConfirmationInstance = Confirmation(image_list, os.path.join(self.dir_path, ftpDetectFile), confirmationDirectory, rejectionDirectory, minimum_frames = 0)
 
         # Cancel the confirmation if there are no detectins in the FTPdetectinfo file
         if len(self.ConfirmationInstance.img_dict) == 0:
@@ -2748,14 +2758,14 @@ class BinViewer(Frame):
             self.confirmationFinish()
             return 0
 
-        if tkMessageBox.askyesno("Confirmation", "Confirmation key bindings:\n  Enter - confirm\n  Delete - reject\n  Page Up - jump to previous image\n  Page Down - jump to next image\n\nThere are "+str(len(self.ConfirmationInstance.getImageList(0)))+" images to be confirmed, do you want to proceed?"):
+        if tkMessageBox.askyesno("Confirmation", "Confirmation key bindings:\n  Enter - confirm\n  Delete - reject\n  Page Up - jump to previous image\n  Page Down - jump to next image\n\nThere are " + str(len(self.ConfirmationInstance.getImageList(0))) + " images to be confirmed, do you want to proceed?"):
 
             # Set gamma a bit higher and turn on deinterlace
             self.hold_levels.set(True)
             # Set gamma to about 1.3, so the meteors are visible better
             self.gamma_scale.set(-0.12)
             self.gamma.set(1.32)
-            self.deinterlace.set(True)
+            self.deinterlace.set(False)  # not needed with progressive scan video
 
             # Disable mode buttons during confirmation
             self.captured_btn.config(state = DISABLED)
@@ -2777,21 +2787,21 @@ class BinViewer(Frame):
             for index, entry in enumerate(self.listbox.get(0, END)):
                 entry = entry.split()
                 if entry[0] != color_old_image:
-                    current_color = colorGen.next()
+                    current_color = next(colorGen)
                     color_old_image = entry[0]
 
                 self.listbox.itemconfig(index, fg = current_color)
 
             # Change key binding
-            self.parent.bind("<Return>", self.confirmationYes) # Enter
+            self.parent.bind("<Return>", self.confirmationYes)  # Enter
 
             SuperUnbind("Delete", self, self.parent)
             # Enable fast rejection
             SuperBind("Delete", self, self.parent, lambda: self.confirmationNo(0, fast_img = True), lambda: self.confirmationNo(0, fast_img = False), repeat_press = False)
 
             # Unbind old bindings
-            self.parent.unbind("<Prior>") #Page up
-            self.parent.unbind("<Next>") #Page down
+            self.parent.unbind("<Prior>")  # Page up
+            self.parent.unbind("<Next>")  # Page down
 
             # Jump to next FF bin with Page Up and Page down, not just next detection
             SuperBind('Prior', self, self.parent, lambda: self.confirmationJumpPreviousImage(0, fast_img = True), lambda: self.confirmationJumpPreviousImage(0, fast_img = False), repeat_press = False, no_repeat_function = self.seeCurrent)
@@ -2815,7 +2825,6 @@ class BinViewer(Frame):
         else:
             self.confirmationFinish()
 
-            
     def confirmationYes(self, event):
         """ Confirm current image in Confirmation instance.
         """
@@ -2825,9 +2834,9 @@ class BinViewer(Frame):
 
         self.ConfirmationInstance.confirmImage(self.confirmationListboxEntry)
 
-        newEntry = self.confirmationListboxEntry+" Y  "
+        newEntry = self.confirmationListboxEntry + " Y  "
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
             self.listbox.focus()
 
         cur_index = int(self.listbox.curselection()[0])
@@ -2839,11 +2848,11 @@ class BinViewer(Frame):
         self.listbox.itemconfig(cur_index, fg = 'green')
 
         next_index = cur_index + 1
-        size = self.listbox.size()-1
+        size = self.listbox.size() - 1
 
         if next_index > size:
             next_index = size
-        
+
         self.listbox.activate(next_index)
         self.listbox.selection_clear(0, END)
         self.listbox.selection_set(next_index)
@@ -2852,7 +2861,7 @@ class BinViewer(Frame):
         self.update_image(0)
 
         # Detect list end
-        if cur_index == self.listbox.size()-1:
+        if cur_index == self.listbox.size() - 1:
             self.confirmationEnd()
 
         confYesLock.release()
@@ -2875,27 +2884,25 @@ class BinViewer(Frame):
 
         self.ConfirmationInstance.rejectImage(self.confirmationListboxEntry)
 
-        newEntry = self.confirmationListboxEntry+"   N"
+        newEntry = self.confirmationListboxEntry + "   N"
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
             self.listbox.focus()
 
         cur_index = int(self.listbox.curselection()[0])
 
         self.listbox.delete(cur_index)
         self.listbox.insert(cur_index, newEntry)
-        
 
         # Change text color to green
         self.listbox.itemconfig(cur_index, fg = 'red')
 
-
         next_index = cur_index + 1
-        size = self.listbox.size()-1
+        size = self.listbox.size() - 1
 
         if next_index > size:
             next_index = size
-        
+
         self.listbox.activate(next_index)
         self.listbox.selection_clear(0, END)
         self.listbox.selection_set(next_index)
@@ -2906,17 +2913,16 @@ class BinViewer(Frame):
         self.update_current_image()
 
         # Detect list end
-        if cur_index == self.listbox.size()-1:
+        if cur_index == self.listbox.size() - 1:
             self.confirmationEnd()
 
         confNoLock.release()
-
 
     def confirmationJumpPreviousImage(self, event, fast_img = False):
         """ Jump to previous FF bin in confirmation, not just next detection.
         """
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
             self.listbox.focus()
 
         if fast_img:
@@ -2937,10 +2943,10 @@ class BinViewer(Frame):
         bottom_image = None
 
         # Go through all entries and find the first detecting on the previous image
-        for entry in reversed(listbox_entries[:cur_index+1]):
+        for entry in reversed(listbox_entries[:cur_index + 1]):
             temp_image = entry.split()[0]
 
-            # Decrement current index 
+            # Decrement current index
             if temp_image == cur_image:
                 if not cur_index == 0:
                     cur_index -= 1
@@ -2973,7 +2979,7 @@ class BinViewer(Frame):
         """ Jump to next FF bin in confirmation, not just next detection.
         """
 
-        if not self.listbox is self.parent.focus_get():
+        if self.listbox is not self.parent.focus_get():
             self.listbox.focus()
 
         if fast_img:
@@ -2981,14 +2987,13 @@ class BinViewer(Frame):
         else:
             self.fast_img_change = False
 
-
         # Current image
         cur_image = self.current_image
 
         # Index of current image in listbox
         cur_index = int(self.listbox.curselection()[0])
 
-        #self.listbox.see(cur_index)
+        # self.listbox.see(cur_index)
 
         listbox_entries = self.listbox.get(0, END)
         listbox_size = len(listbox_entries)
@@ -3004,13 +3009,13 @@ class BinViewer(Frame):
             # Increment current index
             if temp_image == cur_image:
 
-                #self.listbox.activate(cur_index)
-                #self.listbox.selection_clear(0, END)
-                #self.listbox.selection_set(cur_index)
-                #self.listbox.see(cur_index)
+                # self.listbox.activate(cur_index)
+                # self.listbox.selection_clear(0, END)
+                # self.listbox.selection_set(cur_index)
+                # self.listbox.see(cur_index)
                 self.confirmationNo(0, fast_img = True)
 
-                if not cur_index >= listbox_size-1:
+                if not cur_index >= listbox_size - 1:
                     cur_index += 1
             else:
                 break
@@ -3021,15 +3026,14 @@ class BinViewer(Frame):
         if cur_index >= listbox_size - 1:
             cur_index = listbox_size - 1
 
-        #self.listbox.activate(cur_index)
-        #self.listbox.selection_clear(0, END)
-        #self.listbox.selection_set(cur_index)
-        #self.listbox.see(cur_index)
+        # self.listbox.activate(cur_index)
+        # self.listbox.selection_clear(0, END)
+        # self.listbox.selection_set(cur_index)
+        # self.listbox.see(cur_index)
 
         self.update_current_image()
 
         self.update_image(0)
-
 
     def confirmationEnd(self):
         """ Evoken when ending confirmation.
@@ -3040,7 +3044,7 @@ class BinViewer(Frame):
         unchecked_count = len(self.ConfirmationInstance.getImageList(0))
 
         if unchecked_count > 0:
-            if tkMessageBox.askyesno("Confirmation", "Are you sure you want to exit confirmation? You still have "+str(unchecked_count)+" unchecked images."):
+            if tkMessageBox.askyesno("Confirmation", "Are you sure you want to exit confirmation? You still have " + str(unchecked_count) + " unchecked images."):
                 if not tkMessageBox.askyesno("Confirmation", "Do you want to save confirmed images to ConfirmationFiles?"):
                     self.confirmationFinish()
                     return 2
@@ -3049,9 +3053,13 @@ class BinViewer(Frame):
 
         confirmed_files = self.ConfirmationInstance.getImageList(1)
         confirmed_count = len(confirmed_files)
-        rejected_count = len(self.ConfirmationInstance.getImageList(-1))
+        rejected_files = self.ConfirmationInstance.getImageList(-1)
+        rejected_count = len(rejected_files)
 
         FTPdetectinfoExport = self.ConfirmationInstance.exportFTPdetectinfo()
+
+        # CAMS code, initially zero, set if there's a CAMS-format file in the folder
+        cams_code = '000000'
 
         # Copy confirmed images and write modified FTPdetectinfo, if any files were confirmed
         if len(confirmed_files):
@@ -3060,50 +3068,76 @@ class BinViewer(Frame):
                 dir_contents = os.listdir(self.dir_path)
 
                 if ff_bin in dir_contents:
-                    copy2(self.dir_path+os.sep+ff_bin, self.ConfirmationInstance.confirmationDirectory+os.sep+ff_bin)
+                    copy2(os.path.join(self.dir_path, ff_bin), os.path.join(self.ConfirmationInstance.confirmationDirectory, ff_bin))
 
             for dir_file in dir_contents:
-                if ('FTPdetectinfo' in dir_file) and ('.txt' in dir_file) and not ('_original' in dir_file):
-                    copy2(self.dir_path+os.sep+dir_file, self.ConfirmationInstance.confirmationDirectory+os.sep+"".join(dir_file.split('.')[:-1])+'_pre-confirmation.txt')
+                file_name, file_ext = os.path.splitext(dir_file)
+                file_ext = file_ext.lower()
+                if ('FTPdetectinfo' in dir_file) and file_ext == '.txt' and not ('_original' in file_name):
+                    copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, "".join(dir_file.split('.')[:-1]) + '_pre-confirmation.txt'))
                     continue
+                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json','.csv') or dir_file == '.config':
+                    copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, dir_file))
 
-                elif ('.txt' in dir_file) or ('.TXT' in dir_file) or ('.inf' in dir_file) or ('.INF' 
-                    in dir_file) or ('.rpt' in dir_file) or ('.RPT' in dir_file) or ('.log' in 
-                    dir_file) or ('.LOG' in dir_file) or ('.hmm' in dir_file) or ('.HMM' in 
-                    dir_file) or ('.cal' in dir_file)or ('.CAL' in dir_file):
-
-                    copy2(self.dir_path+os.sep+dir_file, self.ConfirmationInstance.confirmationDirectory+os.sep+dir_file)
-
+                # get the CAMS CAL file name, if present, and from it the CAMS code
+                if file_ext == '.txt' and file_name[:4] == 'CAL_':
+                    cams_cal_file_name = dir_file
+                    splits = cams_cal_file_name.split('_')
+                    cams_code = splits[1]
 
             # Write the filtered FTPdetectinfo content to a new file
             newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, os.path.basename(self.ConfirmationInstance.FTP_detect_file)), 'w')
             for line in FTPdetectinfoExport:
                 newFTPdetectinfo.write(line)
-
             newFTPdetectinfo.close()
 
+            # create CAMS compatible ftpdetect file if needed
+            if int(cams_code) > 0:
+                CAMS_file, _ = os.path.splitext(os.path.basename(self.ConfirmationInstance.FTP_detect_file))
+                
+                splits = CAMS_file.split('_')
+                rmsname = splits[1]
+                CAMS_file = CAMS_file.replace(rmsname, cams_code) + 'R.txt'
 
-        tkMessageBox.showinfo("Confirmation", "Confirmation statistics:\n  Confirmed: "+str(confirmed_count)+"\n  Rejected: "+str(rejected_count)+"\n  Unchecked: "+str(unchecked_count))
+                CamsdetectinfoExport = convert_rmsftp_to_cams(FTPdetectinfoExport, cams_code, cams_cal_file_name)
+                
+                newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, CAMS_file), 'w')
+                for line in CamsdetectinfoExport:
+                    newFTPdetectinfo.write(line)
+                newFTPdetectinfo.close()
+
+
+        # Copy rejected images and original ftpdetectinfo
+        if len(rejected_files):
+            dir_contents = os.listdir(self.dir_path)
+            for ff_bin in rejected_files:
+                if ff_bin in dir_contents:
+                    copy2(os.path.join(self.dir_path, ff_bin), os.path.join(self.ConfirmationInstance.rejectionDirectory, ff_bin))
+            for dir_file in dir_contents:
+                file_name, file_ext = os.path.splitext(dir_file)
+                if file_ext in ('.txt', '.json') or dir_file == '.config':
+                    copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.rejectionDirectory, dir_file))
+
+        tkMessageBox.showinfo("Confirmation", "Confirmation statistics:\n  Confirmed: " + str(confirmed_count) + "\n  Rejected: " + str(rejected_count) + "\n  Unchecked: " + str(unchecked_count))
 
         self.confirmationFinish()
 
         return 2
-        
 
     def confirmationFinish(self):
-        """ Finish confirmation procedure by reseting GUI settings to normal. 
+        """ Finish confirmation procedure by reseting GUI settings to normal.
         """
 
         if self.externalVideoOn.get() == 0:
             # Kill confirmation video windows
             global confirmation_video_root
-            if confirmation_video_root != None:
+            if confirmation_video_root is not None:
                 confirmation_video_root.destroy()
                 confirmation_video_root = None
         else:
             # Kill external video windows
             global external_video_root
-            if external_video_root != None:
+            if external_video_root is not None:
                 external_video_root.destroy()
                 external_video_root = None
 
@@ -3139,60 +3173,9 @@ class BinViewer(Frame):
 
         self.update_image(0)
 
-    def exportFireballData(self, no_background=False):
-        """ Export LOG_SORT.INF file from FTPdetectinfo for fireball analysis.
-
-        no_background: images will be built without background stars
-        """
-        if self.current_image == '':
-            return None
-
-        if (self.mode.get() == 3) or (self.mode.get() == 2 and self.data_type.get() == 2):
-            # Only in confirmation in CAMS and Detected in Skypatrol
-
-            save_path, image_list = self.fireball_deinterlacing_process(logsort_export = True, no_background = no_background)
-
-            if save_path == '':
-                return False
-
-            if exportLogsort.exportLogsort(self.dir_path+os.sep, save_path+os.sep, self.data_type.get(), self.current_image, self.meteor_no, self.start_frame.get(), self.end_frame.get(), self.fps.get(), image_list) == False:
-                tkMessageBox.showerror("Logsort export error", "Required files (FTPdetectinfo, CapturedStats or logfile.txt) were not found in the given folder!")
-        
-        else:
-            pass
-            # In detected or captured mode
-            # GENERIC LOGSORT!
-            generic_choice = tkMessageBox.askyesno("Generic LOG_SORT.INF", "Are you sure you want to create a generic LOG_SORT.INF file? \nSwitch to Confirmation mode for CAMS or Detected mode for Skypatrol to create a detection-based LOG_SORT.INF.")
-            if generic_choice == 'yes':
-                # Make generic
-                pass
-            return False
-
-        tkMessageBox.showinfo("Fireball data", "Exporting fireball data done!")
-        self.status_bar.config(text = "Exporting fireball data done!")
-
-        return True
-
-    def postprocessLogsort(self):
-        """ Fixes logsort after analysis with CMN_FBA.
-        """
-
-        logsort_path = tkFileDialog.askopenfilename(initialdir = self.dir_path, parent = self.parent, title = "Choose LOG_SORT.INF to postprocess", initialfile = "LOG_SORT.INF", defaultextension = ".INF", filetypes = [('INF files', '.inf')])
-
-        if logsort_path == '':
-            return False
-
-        if exportLogsort.postAnalysisFix(logsort_path, self.data_type.get()) == False:
-            tkMessageBox.showerror("LOG_SORT.INF error", "LOG_SORT.INF could not be opened or no CaptureStats file was found in folder! If you are working with Skypatrol data, try changing Data type to 'Skypatrol'.")
-        else:
-            tkMessageBox.showinfo("LOG_SORT.INF", "Postprocessing LOG_SORT.INF done!")
-
-
-
-
     def show_about(self):
-        tkMessageBox.showinfo("About", 
-            """CMN_binViewer version: """+str(version)+"""\n
+        tkMessageBox.showinfo("About",
+            """CMN_binViewer version: """ + str(version) + """\n
             Croatian Meteor Network\n
             http://cmn.rgn.hr/\n
             Copyright © 2016 Denis Vida
@@ -3202,7 +3185,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
 """)
 
     def show_key_bindings(self):
-        tkMessageBox.showinfo("Key bindings", 
+        tkMessageBox.showinfo("Key bindings",
             """Key Bindings:
             Changing images:
                 - Arrow Down - move down by one image
@@ -3226,7 +3209,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
                 - F7 - show individual frames (use slider)
 
                 - F9 - show video
-            
+
             Sorting files:
                 - Enter - copy FF*.bin to sorted folder
 
@@ -3235,19 +3218,17 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
                 - Insert - toggle Hold levels
                 """)
 
-
     def onExit(self):
         self.quit()
         self.destroy()
-        sys.exit()
-
+        #sys.exit(0)  # not required as self.destroy() will properly exit the app.
 
     def initUI(self):
         """ Initialize GUI elements.
         """
-      
+
         self.parent.title("CMN_binViewer")
-        
+
         # Configure the style of each element
         s = Style()
         s.configure("TButton", padding=(0, 5, 0, 5), font='serif 10', background = global_bg)
@@ -3257,7 +3238,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         s.configure("TLabel", foreground = global_fg, background = global_bg)
         s.configure("TCheckbutton", foreground = global_fg, background = global_bg)
         s.configure("Vertical.TScrollbar", background=global_bg, troughcolor = global_bg)
-        
+
         self.columnconfigure(0, pad=3)
         self.columnconfigure(1, pad=3)
         self.columnconfigure(2, pad=3)
@@ -3267,7 +3248,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.columnconfigure(6, pad=3)
         self.columnconfigure(7, pad=3)
         self.columnconfigure(8, pad=3)
-        
+
         self.rowconfigure(0, pad=3)
         self.rowconfigure(1, pad=3)
         self.rowconfigure(2, pad=3)
@@ -3280,7 +3261,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.rowconfigure(9, pad=3)
         self.rowconfigure(10, pad=3)
 
-        ## MENUES
+        # MENUS
 
         # Make menu
         self.menuBar = Menu(self.parent)
@@ -3289,11 +3270,13 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         # File menu
         fileMenu = Menu(self.menuBar, tearoff=0)
         fileMenu.add_command(label = "Open FF* folder", command = self.askdirectory)
-        
+
         fileMenu.add_separator()
-        
+        fileMenu.add_command(label="Exit", command=quitBinviewer)
+        # fileMenu.add_separator()
+
         # fileMenu.add_command(label="Exit", underline=0, command=self.onExit)
-        self.menuBar.add_cascade(label="File", underline=0, menu=fileMenu)  
+        self.menuBar.add_cascade(label="File", underline=0, menu=fileMenu)
 
         # Data type menu
         datatypeMenu = Menu(self.menuBar, tearoff = 0)
@@ -3326,14 +3309,6 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         processMenu.add_command(label = "Make master flat frame", command = self.make_master_flat)
         self.menuBar.add_cascade(label="Process", underline=0, menu=processMenu)
 
-        # Fireball menu
-        fireballMenu = Menu(self.menuBar, tearoff = 0)
-        fireballMenu.add_command(label = "Export detection with background stars", command = lambda: self.exportFireballData(no_background = False))
-        fireballMenu.add_command(label = "Export detection without background stars", command = lambda: self.exportFireballData(no_background = True))
-        fireballMenu.add_separator()
-        fireballMenu.add_command(label = "Postprocess LOG_SORT.INF", command = self.postprocessLogsort)
-        self.menuBar.add_cascade(label="Fireball", underline=0, menu=fireballMenu)
-
         # Layout menu
         layoutMenu = Menu(self.menuBar, tearoff = 0)
         layoutMenu.add_checkbutton(label = "Vertical layout", onvalue = True, offvalue = False, variable = self.layout_vertical, command = self.update_layout)
@@ -3360,7 +3335,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         helpMenu.add_command(label = "About", command = self.show_about)
         self.menuBar.add_cascade(label = "Help", underline=0, menu=helpMenu)
 
-        ## GUI SEGMENTS
+        # GUI SEGMENTS
 
         # Panel for mode
         mode_panel = LabelFrame(self, text=' Mode ')
@@ -3412,12 +3387,14 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.arcsinh_chk = Checkbutton(calib_panel, text = 'Enh. stars', variable = self.arcsinh_status, command = lambda: self.update_image(0))
         self.arcsinh_chk.grid(row = 6, column = 2, sticky = "W")
 
+        self.invert_chk = Checkbutton(calib_panel, text = "Invert", variable = self.invert, command = lambda: self.update_image(0))
+        self.invert_chk.grid(row = 6, column = 3, sticky = "W")
 
         # Listbox
         self.scrollbar = Scrollbar(self)
         self.listbox = Listbox(self, width = 47, yscrollcommand=self.scrollbar.set, exportselection=0, activestyle = "none", bg = global_bg, fg = global_fg)
         # Listbox position is set in update_layout function
-        
+
         self.listbox.bind('<<ListboxSelect>>', self.update_image)
         self.scrollbar.config(command = self.listbox.yview)
 
@@ -3445,32 +3422,31 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
 
         # Video
         if not disable_UI_video:
-            self.video_btn = Radiobutton(filter_panel, text = "VIDEO", variable = self.filter, value = 10, command = lambda: self.update_image(0))
+            self.video_btn = Radiobutton(filter_panel, text = "Video", variable = self.filter, value = 10, command = lambda: self.update_image(0))
             self.video_btn.grid(row = 2, column = 10)
 
         # Sort panel
-        sort_panel = LabelFrame(self, text=' Sort FF*.bins ')
-        sort_panel.grid(row = 1, column = 5, sticky = "W", padx=2, pady=5, ipadx=5, ipady=5)
+        self.sort_panel = LabelFrame(self, text=' Sort FF*.bins ')
+        self.sort_panel.grid(row = 1, column = 6, sticky = "W", padx=2, pady=5, ipadx=5, ipady=5)
 
-        sort_folder_label = Label(sort_panel, text = "Folder:")
+        sort_folder_label = Label(self.sort_panel, text = "Folder:")
         sort_folder_label.grid(row = 2, column = 4, sticky = "W")
-        sort_folder_entry = StyledEntry(sort_panel, textvariable = self.sort_folder_path, width = 15)
+        sort_folder_entry = StyledEntry(self.sort_panel, textvariable = self.sort_folder_path, width = 15)
         sort_folder_entry.grid(row = 3, column = 4)
 
-        #previous_button = StyledButton(sort_panel, text ="<", width=3, command = lambda: self.move_img_up(0))
-        #previous_button.grid(row = 2, column = 6, rowspan = 2)
+        # previous_button = StyledButton(sort_panel, text ="<", width=3, command = lambda: self.move_img_up(0))
+        # previous_button.grid(row = 2, column = 6, rowspan = 2)
 
-        copy_button = StyledButton(sort_panel, text ="Copy", width=5, command = lambda: self.copy_bin_to_sorted(0))
+        copy_button = StyledButton(self.sort_panel, text ="Copy", width=5, command = lambda: self.copy_bin_to_sorted(0))
         copy_button.grid(row = 2, column = 7, rowspan = 2)
-        open_button = StyledButton(sort_panel, text ="Show folder", command = lambda: self.open_current_folder(0))
+        open_button = StyledButton(self.sort_panel, text ="Show folder", command = lambda: self.open_current_folder(0))
         open_button.grid(row = 2, column = 8, rowspan = 2)
 
-        #next_button = StyledButton(sort_panel, text =">", width=3, command = lambda: self.move_img_down(0))
-        #next_button.grid(row = 2, column = 9, rowspan = 2)
+        # next_button = StyledButton(sort_panel, text =">", width=3, command = lambda: self.move_img_down(0))
+        # next_button.grid(row = 2, column = 9, rowspan = 2)
 
-
-        ## IMAGE
-        try: 
+        # IMAGE
+        try:
             # Show the TV test card image on program start
             noimage_data = open('noimage.bin', 'rb').read()
             noimage = PhotoImage(data = noimage_data)
@@ -3482,14 +3458,13 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.imagelabel.grid(row=3, column=3, rowspan = 4, columnspan = 3)
 
         # Timestamp label
-        #self.timestamp_label = Label(self, text = "YYYY-MM-DD HH:MM.SS.mms  FFF", font=("Courier", 12))
+        # self.timestamp_label = Label(self, text = "YYYY-MM-DD HH:MM.SS.mms  FFF", font=("Courier", 12))
         self.timestamp_label = Label(self, text = "YYYY-MM-DD HH:MM.SS.mms", font=("Courier", 12))
-        self.timestamp_label.grid(row = 7, column = 5, sticky = "E")
-        #self.timestamp_label.grid(row = 2, column = 3, sticky = "WNS")
-        
+        self.timestamp_label.grid(row = 7, column = 3, sticky = "E")
+        # self.timestamp_label.grid(row = 2, column = 3, sticky = "WNS")
+
         # Save buttons
-        self.save_panel = LabelFrame(self, text=' Save image ') #Position set in update layout
-        
+        self.save_panel = LabelFrame(self, text=' Save image ')  # Position set in update layout
 
         save_label = Label(self.save_panel, text = "Save")
         save_label.grid(row = 9, column = 3, sticky = "W")
@@ -3509,13 +3484,11 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         save_as_jpg = StyledButton(self.save_panel, text="JPG", width = 5, command = lambda: self.save_image(extension = 'jpg', save_as = True))
         save_as_jpg.grid(row = 10, column = 5)
 
-        self.print_name_btn = Checkbutton(self.save_panel, text = "Embed name", variable = self.print_name_status) #Position set in update_label
-        
+        self.print_name_btn = Checkbutton(self.save_panel, text = "Embed name", variable = self.print_name_status)  # Position set in update_label
 
         # Levels adjustment
         self.levels_label = LabelFrame(self, text =" Image levels ")
         # Position set in update_layout function
-        
 
         self.min_lvl_scale = Scale(self.levels_label, orient = "horizontal", width = 12, borderwidth = 0, background = global_bg, foreground = global_fg, highlightthickness = 0, sliderlength = 10, resolution = 2)
         self.min_lvl_scale.grid(row = 9, column = 4, sticky = "W")
@@ -3529,7 +3502,7 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
 
         self.min_lvl_scale.set(0)
         self.min_lvl_scale.config(command = self.update_scales)
-        
+
         self.max_lvl_scale.set(255)
         self.max_lvl_scale.config(command = self.update_scales)
 
@@ -3537,12 +3510,10 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
 
         self.hold_levels_chk_horizontal = Checkbutton(self.levels_label, text = 'Hold levels', variable = self.hold_levels)
         # Position set in update_layout function
-        
 
         # Animation panel
         self.animation_panel = LabelFrame(self, text=' Save animation ')
         # Position set in update_layout function
-        
 
         start_frame_label = Label(self.animation_panel, text = "Start Frame: ")
         start_frame_label.grid(row = 9, column = 4, sticky = "W")
@@ -3560,7 +3531,6 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         fps_entry = ConstrainedEntry(self.animation_panel, textvariable = self.fps, width = 4)
         fps_entry.grid(row = 11, column = 5, rowspan = 2, sticky = "WE")
 
-
         gif_embed_btn = Checkbutton(self.animation_panel, text = "Embed name", variable = self.gif_embed)
         gif_embed_btn.grid(row = 9, column = 6, sticky = "W")
 
@@ -3573,10 +3543,9 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         self.gif_make_btn = StyledButton(self.animation_panel, text ="GIF", command = self.make_gif, width = 10)
         # Position set in update_layout function
 
-
         # Frame slider
         self.frames_slider_panel = LabelFrame(self, text=' Frame ')
-        #Position set in update_layout function
+        # Position set in update_layout function
 
         self.frame_scale = Scale(self.frames_slider_panel, orient = "horizontal", width = 12, borderwidth = 0, background = global_bg, foreground = global_fg, highlightthickness = 0, sliderlength = 20, from_ = 0, to = 255, resolution = 1, length = 100)
         self.frame_scale.grid(row = 1, column = 1, columnspan = 5, sticky ="WE")
@@ -3595,39 +3564,40 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         save_frames_btn = StyledButton(self.frames_slider_panel, text = "Save frames", command = self.fireball_deinterlacing_process)
         save_frames_btn.grid(row = 2, column = 5)
 
-
         # Status bar
         self.status_bar = Label(self, text="Start", relief="sunken", anchor="w")
         self.status_bar.grid(row = 11, column = 0, columnspan = 15, sticky = "WE")
 
         self.update_layout()
-        
+
 
 def log_timestamp():
-    """ Returns timestamp for logging. 
+    """ Returns timestamp for logging.
     """
-    return datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  
+    return datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-class Catcher: 
-    """ Used for catching unhandled exceptions. 
+
+class Catcher:
+    """ Used for catching unhandled exceptions.
     """
     def __init__(self, func, subst, widget):
-        self.func = func 
+        self.func = func
         self.subst = subst
         self.widget = widget
+
     def __call__(self, *args):
         try:
             if self.subst:
-                #args = apply(self.subst, args)
-                args = self.subst(*args) # python3
-            #return apply(self.func, args)
+                # args = apply(self.subst, args)
+                args = self.subst(*args)  # python3
+            # return apply(self.func, args)
             return self.func(*args)
-        except (SystemExit):
-            raise (SystemExit)
+        except SystemExit as msg:
+            raise SystemExit(msg)
         except:
             log.critical(traceback.format_exc())
-            tkMessageBox.showerror("Unhandled exception", "An unhandled exception has occured!\nPlease see the last logfile in the "+log_directory+" for more information!")
-            sys.exit()
+            tkMessageBox.showerror("Unhandled exception", "An unhandled exception has occured!\nPlease see the last logfile in the " + log_directory + " for more information!")
+            sys.exit(0)
 
 
 # Confirmation video global variables
@@ -3641,24 +3611,23 @@ external_video_root = None
 stop_external_video = False
 
 
-
 def confirmationVideoInitialize(img_cols):
-    """ Initializes the Confirmation video window. 
+    """ Initializes the Confirmation video window.
     """
 
     global confirmation_video_app, confirmation_video_root
-    
+
     confirmation_video_root = tk.Toplevel()
     confirmation_video_root.wm_attributes("-topmost", 1)  # Always on top
 
     # Set position of the external window
-    img_cols = str(int(770 + 0.92*img_cols/2))
+    img_cols = str(int(770 + 0.92 * img_cols / 2))
     confirmation_video_root.geometry('+' + img_cols + '+130')
 
     # Try window mondifications (works only on Windows!)
     try:
         # Remove minimize and maximize buttons
-        confirmation_video_root.attributes("-toolwindow", 1)  
+        confirmation_video_root.attributes("-toolwindow", 1)
 
         # Override close button to do nothing
         confirmation_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None)
@@ -3667,23 +3636,21 @@ def confirmationVideoInitialize(img_cols):
         pass
 
 
-
 def externalVideoInitialize(img_cols):
-    """ Initializes the External video window. 
+    """ Initializes the External video window.
     """
 
     global external_video_app, external_video_root
-    
+
     external_video_root = tk.Toplevel()
     external_video_root.wm_attributes("-topmost", 1)  # Always on top
 
     # Set position of the external window
-    img_cols = str(int(770 + 0.92*img_cols/2))
-    external_video_root.geometry('+'+img_cols+'+130')
+    img_cols = str(int(770 + 0.92 * img_cols / 2))
+    external_video_root.geometry('+' + img_cols + '+130')
 
-    external_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None) # Override close button to do nothing
+    external_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None)  # Override close button to do nothing
     external_video_root.attributes("-toolwindow", 1)  # Remove minimize and maximize buttons
-
 
 
 def quitBinviewer():
@@ -3691,13 +3658,10 @@ def quitBinviewer():
 
     root.quit()
     root.destroy()
-    sys.exit()
-
-
+    #sys.exit(0)  # not required as self.destroy() will properly exit the app.
 
 
 if __name__ == '__main__':
-
 
     # Init argument parser
     parser = argparse.ArgumentParser()
@@ -3716,18 +3680,17 @@ if __name__ == '__main__':
     # Initialize logging, store logfile in AppData
     # For Windows
     if sys.platform == 'win32':
-        log_directory = os.getenv('APPDATA')+os.sep+log_directory+os.sep
+        log_directory = os.path.join(os.getenv('APPDATA'), log_directory)
     else:
         # For Unix
-        log_directory = os.path.expanduser(os.path.join("~", "." + log_directory)) + os.sep
-
+        log_directory = os.path.expanduser(os.path.join("~", "." + log_directory))
 
     mkdir_p(log_directory)
     log = logging.getLogger(__name__)
     log.setLevel(logging.INFO)
 
-    log_file = log_directory+log_timestamp()+'.log'
-    handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1) #Log to a different file each day
+    log_file = os.path.join(log_directory, log_timestamp() + '.log')
+    handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1)  # Log to a different file each day
     handler.setLevel(logging.INFO)
 
     formatter = logging.Formatter(fmt='%(asctime)s-%(levelname)s-%(module)s-line:%(lineno)d - %(message)s', datefmt='%Y/%m/%d %H:%M:%S')
@@ -3742,24 +3705,27 @@ if __name__ == '__main__':
 
     # Log program start
     log.info("Program start")
-    log.info("Version: "+str(version))
+    log.info("Version: " + str(version))
 
     # Initialize main window
-    root = Tk()
-    # Set window position to the uppet-left corner
-    root.geometry('+0+0')
+    root = tk.Tk()
+    # Set window position and size
+
+    if sys.platform == 'win32':
+        root.geometry('+0+0')
+        #root.wm_state('zoomed')
+    else:
+        root.geometry('+0+0')
 
     # Add a special function which controls what happens when when the close button is pressed
     root.protocol('WM_DELETE_WINDOW', quitBinviewer)
 
     # Set window icon
     try:
-        root.iconbitmap(r'.'+os.sep+'icon.ico')
+        root.iconbitmap(os.path.join('.', 'icon.ico'))
     except:
         pass
 
     # Init the BinViewer UI
     app = BinViewer(root, dir_path=args.dir_path, confirmation=args.confirmation)
-    
     root.mainloop()
-    

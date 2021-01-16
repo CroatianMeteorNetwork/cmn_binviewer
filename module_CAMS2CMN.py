@@ -17,8 +17,8 @@ def create_paired_file(cams_cap_stats_file, cmn_log_file):
     f_cams = open(cams_cap_stats_file, 'r')
     f_cmn = open(cmn_log_file, 'w')
     f_paired = open(paired_file, 'w')
-    f_cmn.write('Exposure time       : 0.1706666667\n');
-    f_cmn.write('Framerate           : 25\n');
+    f_cmn.write('Exposure time       : 0.1706666667\n')
+    f_cmn.write('Framerate           : 25\n')
     i = 0
     paired = []
     first_date = 0
@@ -33,7 +33,8 @@ def create_paired_file(cams_cap_stats_file, cmn_log_file):
             try:
                 date_taken = datetime.strptime(fns[1]+' '+fns[2]+'.'+fns[3],'%Y%m%d %H%M%S.%f')
                 date_taken = date_taken + timedelta(seconds=10.24) #add 10.24 s to correct the time                
-                if i == 1: first_date = date_taken
+                if i == 1: 
+                    first_date = date_taken
                 dt = datetime.strftime(date_taken,'%Y-%m-%d %H:%M:%S.%f')[:-3]
                 tm = datetime.strftime(date_taken,'%H:%M:%S:%f')[:-3]
                 f_paired.write('%08d %s %s\n' % (i,dt,fn))
@@ -42,7 +43,7 @@ def create_paired_file(cams_cap_stats_file, cmn_log_file):
             except ValueError:
                 date_taken = -1
                 print('\nWarning: can\'t convert date from '+fn+' in '+cams_cap_stats_file,'.')
-    f_cmn.write('999\n');
+    f_cmn.write('999\n')
     f_cams.close()
     f_cmn.close()
     f_paired.close()
@@ -58,7 +59,8 @@ def convert_cal_stars(cams_cal_stars_file, cmn_cal_stars_file, paired_data, use_
     f_cmn.write('Processed with CAMS2CMN on '+datetime.strftime(datetime.now(),'%a %b %d %H:%M:%S %Y')+'\n')
     f_cmn.write('-------------------------------------------------\n')
     frame_cnt = 0
-    if use_every_nth<=0: use_every_nth = 1
+    if use_every_nth<=0:
+        use_every_nth = 1
     search_paired = True
     for line in f_cams:
         if search_paired:
@@ -105,7 +107,7 @@ def convert_ftp_detec(cams_ftp_detec_file, cmn_mtp_detec_file, switch_fields, pa
     total = -1
     curr_file = ''
     count = 0
-    field = -1
+    # field = -1  # variable not used
     for line in f_cams:
         if search_paired:
             p = [i for i, s in enumerate(paired_data) if line.find(s)>=0] # find line in paired_data
@@ -142,17 +144,41 @@ def convert_ftp_detec(cams_ftp_detec_file, cmn_mtp_detec_file, switch_fields, pa
                 else:
                     prev_l = l                        
             elif (line.find('Uncalibrated')<0):
-                if len(prev_l)==8: f_cmn.write('%s C_%.08d %s %s %s %s %s %s %s\n' % (header[1],p[0]+1,prev_l[0],prev_l[1],prev_l[2],prev_l[7],header[7],header[8],header[9]))
+                if len(prev_l)==8: 
+                    f_cmn.write('%s C_%.08d %s %s %s %s %s %s %s\n' % (header[1],p[0]+1,prev_l[0],prev_l[1],prev_l[2],prev_l[7],header[7],header[8],header[9]))
                 prev_l = []
                 if header_found and (total>=0) and (count!=total):
                     print('\nWarning: event count different from specified for '+curr_file+' in ',cams_ftp_detec_file+'')
                 search_paired = True
                 header_found = False                
-    if len(prev_l)==8: f_cmn.write('%s C_%.08d %s %s %s %s %s %s %s\n' % (header[1],p[0]+1,prev_l[0],prev_l[1],prev_l[2],prev_l[7],header[7],header[8],header[9]))
+    if len(prev_l)==8: 
+        f_cmn.write('%s C_%.08d %s %s %s %s %s %s %s\n' % (header[1],p[0]+1,prev_l[0],prev_l[1],prev_l[2],prev_l[7],header[7],header[8],header[9]))
     f_cams.close()
     f_cmn.close()    
     print('done!')
     
+
+def convert_rmsftp_to_cams(ftpdata, cams_code, cal_file_name):
+    camsdata=ftpdata
+
+    lc = len(camsdata)
+    for i in range(lc):
+        if i == lc:
+            break
+
+        # skip the header lines
+        if i < 11:
+            continue
+
+        # replace RMS code with CAMS code, and replace the recalibration line with the CAMS CAL filename
+        if camsdata[i][:3] == '---' and i < lc:
+            splits = camsdata[i+1].split('_')
+            rmscode = splits[1]
+            camsdata[i+1] = camsdata[i+1].replace(rmscode, cams_code).replace('.fits', '.bin')
+            camsdata[i+2]=cal_file_name + '\n'
+            camsdata[i+3] = camsdata[i+3].replace(rmscode, cams_code)
+
+    return camsdata
 
 
 def main():
@@ -174,7 +200,7 @@ def main():
                 use_every_nth = 1
             switch_fields = sys.argv[4] == '/S'    
             if num_args > 5:    
-              switch_fields = sys.argv[5] == '/S'
+                switch_fields = sys.argv[5] == '/S'
         if not os.path.exists(cams_cap_stats_file):
             print('Error: can\'t find file ' + cams_cap_stats_file + '. Exiting.')
         elif not os.path.exists(cams_cal_stars_file):
@@ -203,6 +229,7 @@ def main():
 ##if __name__ == '__main__':
 ##           main()
 
+
 def run_cams2cmn(date, use_every_nth=1, skip_calstars = False):
     
     switch_fields=False
@@ -214,10 +241,10 @@ def run_cams2cmn(date, use_every_nth=1, skip_calstars = False):
     for line in os.listdir(date):
         if 'CALSTARS' in line:
             calstars_file=line
-        if ('FTPdetectinfo_' in line) and (not 'original' in line):
+        if ('FTPdetectinfo_' in line) and ('original' not in line):
             detect_file=line
 
-    if skip_calstars == True:
+    if skip_calstars is True:
         calstars_file = ' '
 
     if calstars_file=='' or detect_file=='':
@@ -242,4 +269,3 @@ def run_cams2cmn(date, use_every_nth=1, skip_calstars = False):
 
 
 #run_cams2cmn("C:\\HMM_ADAPT\\CAMS\\CapturedFiles\\2014_04_22_20_33_28\\")
-
