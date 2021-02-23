@@ -1402,7 +1402,6 @@ class BinViewer(Frame):
     def video_set(self, event):
         """ Sets VIDEO filter by pressing F9.
         """
-        print('selecting video mode')
         self.filter.set(10)
         self.update_image(0)
 
@@ -1923,7 +1922,6 @@ class BinViewer(Frame):
             self.gamma_scale.config(state = DISABLED)
 
             self.temp_frame.set(self.start_frame.get())  # Set temporary frame to start frame
-            print(self.start_frame.get(), self.end_frame.get())
 
             self.old_filter.set(10)
 
@@ -2049,13 +2047,6 @@ class BinViewer(Frame):
             script_time = float(end_time - start_time)
             # Don't run sleep if the script time is bigger than FPS
             time.sleep(max(0, (1.0 / self.fps.get()) - script_time))
-
-        print('end of video loop')
-
-        #for i in range(1, 255):
-        #    self.onMyLongProcessUpdate(i)
-        #    time.sleep(1.0/25.0) # simulate doing work
-        print("Done!")                
 
 
     def onMyLongProcessUpdate(self, temp_image, temp_frame):
@@ -3132,7 +3123,6 @@ class BinViewer(Frame):
         cams_code = '000000'
 
         saved_tstamp = self.timestamp_label.cget("text")
-        print(saved_tstamp)
         # Copy confirmed images and write modified FTPdetectinfo, if any files were confirmed
         if len(confirmed_files):
             self.timestamp_label.configure(text = "Copying confirmed files...")
