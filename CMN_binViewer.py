@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.10  # python 2 and 3 compatability
+version = 3.2  # python 2 and 3 compatability
 
 
 # Disable video in Python 3
@@ -1412,6 +1412,7 @@ class BinViewer(Frame):
     def video_set(self, event):
         """ Sets VIDEO filter by pressing F9.
         """
+        print('selecting video mode')
         self.filter.set(10)
         self.update_image(0)
 
@@ -1588,10 +1589,6 @@ class BinViewer(Frame):
 
         updateImageLock.release()
 
-        # when changing the selected file, turn off video mode
-        if (self.current_image != self.old_image) and self.filter.get() == 10:
-            self.filter.set(1)
-
         # determine the station ID - we need this when doing confirmations
         bn = os.path.basename(self.dir_path)
         spl = bn.split('_')
@@ -1748,6 +1745,10 @@ class BinViewer(Frame):
 
                 self.old_confirmation_image = self.current_image
             self.current_image, self.meteor_no = self.current_image.split()[0:2]
+
+        # when changing the selected file, turn off video mode
+        if (self.current_image != self.old_image) and self.filter.get() == 10:
+            self.filter.set(1)
 
         img_path = os.path.join(self.dir_path, self.current_image)
 
@@ -1932,9 +1933,12 @@ class BinViewer(Frame):
             self.gamma_scale.config(state = DISABLED)
 
             self.temp_frame.set(self.start_frame.get())  # Set temporary frame to start frame
+            print(self.start_frame.get(), self.end_frame.get())
 
             self.old_filter.set(10)
 
+            self.old_image = self.current_image
+            
             self.bgtask.start()
 
             return 0

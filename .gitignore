@@ -3,3 +3,5 @@
 
 build/
 .vscode/settings.json
+CMN_binViewer-setup64.exe
+CMN_binViewer-setup32.exe
