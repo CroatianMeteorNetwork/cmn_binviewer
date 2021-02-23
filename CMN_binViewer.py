@@ -34,6 +34,7 @@ import time
 import datetime
 import subprocess
 
+
 # python 2/3 compatability
 if sys.version_info[0] < 3:
     import Tkinter as tk
@@ -69,17 +70,9 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.00  # python 2 and 3 compatability
+version = 3.2  # python 2 and 3 compatability
 
-# Disable video in Python 3
-# Video inside the GUI is very prone to crashes due to TkInter being not thread-safe. Thus it is better to
-# leave the video disabled. I'll fix this later. 
-
-if sys.version_info[0] < 3:
-    disable_UI_video = False
-else:
-    disable_UI_video = True
-
+# set to true to disable the video radiobutton
 disable_UI_video = False
 
 global_bg = "Black"
@@ -90,6 +83,46 @@ config_file = 'config.ini'
 log_directory = 'CMN_binViewer_logs'
 
 tempImage = 0
+
+
+class BackgroundTask():
+
+    def __init__(self, taskFuncPointer):
+        self.__taskFuncPointer_ = taskFuncPointer
+        self.__workerThread_ = None
+        self.__isRunning_ = False
+
+
+    def taskFuncPointer(self): 
+        return self.__taskFuncPointer_
+
+
+    def isRunning(self): 
+        return self.__isRunning_ and self.__workerThread_.is_alive()
+
+
+    def start(self): 
+        if not self.__isRunning_:
+            self.__isRunning_ = True
+            self.__workerThread_ = self.WorkerThread(self)
+            self.__workerThread_.start()
+
+    def stop(self):
+        self.__isRunning_ = False
+
+
+    class WorkerThread(threading.Thread):
+
+        def __init__(self, bgTask):      
+            threading.Thread.__init__(self)
+            self.__bgTask_ = bgTask
+
+        def run(self):
+            try:
+                self.__bgTask_.taskFuncPointer()(self.__bgTask_.isRunning)
+            except Exception as e:
+                print(repr(e))
+            self.__bgTask_.stop()
 
 
 def getSysTime():
@@ -166,99 +199,6 @@ class ConstrainedEntry(StyledEntry):
             return False
 
         return True
-
-
-class Video(threading.Thread): 
-    """ Class for handling video showing in another thread.
-    """
-    def __init__(self, viewer_class, img_path):
-        
-        super(Video, self).__init__()
-        # Set main binViewer class to be callable inside Video class
-        self.viewer_class = viewer_class
-        self.img_path = img_path
-        self.fps = self.viewer_class.fps.get()
-
-        self.temp_frame = self.viewer_class.temp_frame.get()
-        self.end_frame = self.viewer_class.end_frame.get()
-        self.start_frame = self.viewer_class.start_frame.get()
-
-        self.data_type = self.viewer_class.data_type.get()
-
-        self._stop_event = threading.Event()
-
-    def stop(self):
-        self._stop_event.set()
-
-    def run(self):
-
-        temp_frame = self.temp_frame
-        start_frame = self.start_frame
-        end_frame = self.end_frame
-
-        video_cache = []  # Storing the fist run of reading from file to an array
-
-        ff_bin_read = readFF(self.img_path, datatype=self.data_type)
-
-        resize_fact = self.viewer_class.image_resize_factor.get()
-        if resize_fact <= 0:
-            resize_fact = 1        
-
-        # Cache everything under 75 frames
-        if (end_frame - start_frame + 1) <= 75:
-            cache_flag = True
-        else:
-            cache_flag = False
-
-        print('entering loop, _stop_event is', self._stop_event.is_set())
-
-        while self._stop_event.is_set() is False: 
-            # print('1')
-            start_time = getSysTime()   # Time the script below to achieve correct FPS
-            if temp_frame >= end_frame:
-                self.temp_frame = start_frame
-                temp_frame = start_frame
-            else:
-                temp_frame += 1
-            # print('2')
-            if cache_flag is True:
-                
-                # Cache video files during first run
-                if len(video_cache) < (end_frame - start_frame + 1):
-                    img_array = buildFF(ff_bin_read, temp_frame, videoFlag = True)
-                    video_cache.append(img_array)
-                else:
-                    img_array = video_cache[temp_frame - start_frame] # Read cached video frames in consecutive runs
-
-            else:
-                img_array = buildFF(ff_bin_read, temp_frame, videoFlag = True)
-
-            self.viewer_class.img_data = img_array
-
-            # Prepare image for showing
-            temp_image = ImageTk.PhotoImage(img.fromarray(img_array).resize((img_array.shape[1] // resize_fact, img_array.shape[0] // resize_fact), img.BILINEAR))
-
-            self.viewer_class.imagelabel.configure(image = temp_image) #Set image to image label
-            self.viewer_class.imagelabel.image = temp_image
-            # print('3f')
-
-            # Set timestamp
-            # print('4')
-            _, img_name = os.path.split(self.img_path)
-            self.viewer_class.set_timestamp(temp_frame, image_name=img_name)
-            # print('5')
-
-            # Sleep for 1/FPS with corrected time for script running time
-            end_time = getSysTime()
-            script_time = float(end_time - start_time)
-            # Don't run sleep if the script time is bigger than FPS
-            time.sleep(max(0.01, (1.0 / self.fps) - script_time))
-            # print('6')
-            if self._stop_event.is_set() is True:
-                print('stopped set true')
-                break
-
-        print('end of video loop')
 
 
 class ExternalVideo(Frame): 
@@ -692,6 +632,7 @@ class BinViewer(Frame):
 
         self.filter_no = 6  # Number of filters
         self.dir_path = os.path.abspath(os.sep)
+        self.station_id = ''
 
         self.layout_vertical = BooleanVar()  # Layout variable
 
@@ -779,6 +720,7 @@ class BinViewer(Frame):
         self.externalVideoOn = IntVar()
         self.externalVideoOn.set(external_video_config)
 
+        self.bgtask = BackgroundTask(self.showVideoMainWindow)
         self.HT_rho = 0
         self.HT_phi = 0
 
@@ -870,6 +812,63 @@ class BinViewer(Frame):
         # Run confirmation if the flag was given
         if confirmation:
             self.confirmationStart()
+
+    def updateUFOData(self, ftpdata, ufoData):
+
+        newufoData = []
+        tstamps = []
+        for li in range(len(ufoData)):
+            if li ==0:
+                newufoData.append(ufoData[0])
+            else:
+                d = ufoData[li].split(',')
+                ss = float(d[6])
+                sec = int(float(ss))
+                us = int((ss-sec)*1000)*1000  # avoid rounding error - data is in millisecs
+                thisdt = datetime.datetime(int(d[1]), int(d[2]), int(d[3]), int(d[4]), int(d[5]), sec, us)
+                if sys.version_info[0] >=3:
+                    tstamps.append(thisdt.timestamp())
+                else:
+                    tstamps.append((thisdt - datetime.datetime(1970, 1, 1)).total_seconds())
+
+        # use an ndarray so i can perform conditional matching
+        ufotype=np.dtype([('ts','f8')])
+        all_data = np.array(tstamps, dtype=ufotype)
+
+        for i in range(len(ftpdata)):
+            if i < 11:
+                continue
+            if ftpdata[i][:3]=='---':
+                # extract the datetime of the start of the event
+                file_name = ftpdata[i+1]
+                info_line = ftpdata[i+3]
+                first_frame = ftpdata[i+4]
+
+                splits = file_name.split('_')
+                dt = datetime.datetime.strptime(splits[2] + '_' + splits[3] + '.' + splits[4], '%Y%m%d_%H%M%S.%f')
+
+                splits = info_line.split(' ')
+                fps = float(splits[3])
+
+                splits = first_frame.split(' ')
+                addsecs = float(splits[0])/fps
+
+                addmus = int(addsecs*1000)*1000
+                dt = dt + datetime.timedelta(microseconds=addmus)
+                if sys.version_info[0] >=3:
+                    dt = dt.timestamp()
+                else:
+                    dt = (dt - datetime.datetime(1970, 1, 1)).total_seconds()
+                
+                cond = abs(all_data['ts'] - dt) < 0.01  # seems to be 4-5ms variance
+
+                match = all_data[cond]
+                if len(match) > 0:
+                    for ma in match:
+                        idx = np.where(all_data == ma)
+                        newufoData.append(ufoData[idx[0][0]+1])
+
+        return newufoData
 
     def defaultBindings(self):
         """ Default key bindings. User for program init and resetting after confirmation is done.
@@ -1544,6 +1543,7 @@ class BinViewer(Frame):
             self.fast_img_change = False
             self.update_image(0)
 
+
     def update_image(self, event, update_levels = False):
         """ Updates the current image on the screen.
         """
@@ -1562,6 +1562,10 @@ class BinViewer(Frame):
         # External video flags, app and window
         global stop_external_video, external_video_app, external_video_root
 
+        if self.bgtask.isRunning():
+            self.bgtask.stop() # stop video updates
+            time.sleep(0.001) # yield briefly to the thread scheduler
+
         updateImageLock = threading.RLock()
 
         self.status_bar.config(text = "View image")  # Update status bar
@@ -1574,16 +1578,11 @@ class BinViewer(Frame):
 
         updateImageLock.release()
 
-        try:
-            print('update_image: stopping video thread')
-            self.video_thread.stop()
-            print('waiting')
-            self.video_thread.join()  # Wait for the video thread to finish
-            print('done...')
-            self.video_thread = None  # Delete video thread
-        except:
-            self.video_thread = None  # Delete video thread
-            pass
+        # determine the station ID - we need this when doing confirmations
+        bn = os.path.basename(self.dir_path)
+        spl = bn.split('_')
+        if len(spl) > 1:
+            self.station_id = spl[0]
 
         # Only on image change, set proper ConstrainedEntry maximum values for Video and Frame filter start and end frames, only in Captured mode
         if (self.current_image != self.old_image) and self.mode.get() == 1:
@@ -1735,6 +1734,10 @@ class BinViewer(Frame):
 
                 self.old_confirmation_image = self.current_image
             self.current_image, self.meteor_no = self.current_image.split()[0:2]
+
+        # when changing the selected file, turn off video mode
+        if (self.current_image != self.old_image) and self.filter.get() == 10:
+            self.filter.set(1)
 
         img_path = os.path.join(self.dir_path, self.current_image)
 
@@ -1920,12 +1923,11 @@ class BinViewer(Frame):
 
             self.temp_frame.set(self.start_frame.get())  # Set temporary frame to start frame
 
-            self.video_thread = Video(app, img_path)  # Create video object, pass binViewer class (app) to video object
-            self.video_thread.daemon = True
-
             self.old_filter.set(10)
 
-            self.video_thread.start()  # Start video thread
+            self.old_image = self.current_image
+            
+            self.bgtask.start()
 
             return 0
 
@@ -1985,6 +1987,77 @@ class BinViewer(Frame):
         self.old_image = self.current_image
 
         return 0
+
+    # GOHERE
+    def showVideoMainWindow(self, isRunningFunc=None):
+
+        temp_frame = self.temp_frame.get()
+        start_frame = self.start_frame.get()
+        end_frame = self.end_frame.get()
+
+        video_cache = []  # Storing the fist run of reading from file to an array
+
+        fullname = os.path.join(self.dir_path, self.current_image)
+        ff_bin_read = readFF(fullname, datatype=self.data_type.get())
+
+        resize_fact = self.image_resize_factor.get()
+        if resize_fact <= 0:
+            resize_fact = 1        
+
+        # Cache everything under 75 frames
+        if (end_frame - start_frame + 1) <= 75:
+            cache_flag = True
+        else:
+            cache_flag = False
+
+        stop=False
+        while stop is False:
+            try:
+                if not isRunningFunc():
+                    return
+            except: 
+                pass   
+            start_time = getSysTime()   # Time the script below to achieve correct FPS
+            if temp_frame >= end_frame:
+                self.temp_frame.set(start_frame)
+                temp_frame = start_frame
+            else:
+                temp_frame += 1
+            if cache_flag is True:
+                
+                # Cache video files during first run
+                if len(video_cache) < (end_frame - start_frame + 1):
+                    img_array = buildFF(ff_bin_read, temp_frame, videoFlag = True)
+                    video_cache.append(img_array)
+                else:
+                    img_array = video_cache[temp_frame - start_frame] # Read cached video frames in consecutive runs
+
+            else:
+                img_array = buildFF(ff_bin_read, temp_frame, videoFlag = True)
+
+            self.img_data = img_array
+
+            # Prepare image for showing
+            temp_image = ImageTk.PhotoImage(img.fromarray(img_array).resize((img_array.shape[1] // resize_fact, img_array.shape[0] // resize_fact), img.BILINEAR))
+
+            self.onMyLongProcessUpdate(temp_image, temp_frame)
+
+            # Sleep for 1/FPS with corrected time for script running time
+            end_time = getSysTime()
+            script_time = float(end_time - start_time)
+            # Don't run sleep if the script time is bigger than FPS
+            time.sleep(max(0, (1.0 / self.fps.get()) - script_time))
+
+
+    def onMyLongProcessUpdate(self, temp_image, temp_frame):
+        self.imagelabel.configure(image = temp_image) #Set image to image label
+        self.imagelabel.image = temp_image
+
+        # Set timestamp
+        img_name = self.current_image
+        self.set_timestamp(temp_frame, image_name=img_name)
+        #self.fps_label.configure(text = str(status))
+
 
     def set_timestamp(self, fps = None, image_name = None):
         """ Sets timestamp with given parameters.
@@ -2069,18 +2142,6 @@ class BinViewer(Frame):
 
         self.filter.set(1)
 
-        # Stop video every image update
-        try:
-            self.video_thread.stop()
-            # Wait for the video thread to finish
-            print('waiting')
-            self.video_thread.join()
-            print('done')
-            # Delete video thread
-            self.video_thread = None
-        except:
-            pass
-
         self.status_bar.config(text = "Opening directory...")
 
         if self.dir_path == '':
@@ -2095,7 +2156,7 @@ class BinViewer(Frame):
                 self.dir_path = old_dir_path
             else:
                 self.dir_path = os.getcwd()
-
+        
         # Update listbox
         self.update_listbox(self.get_bin_list())
 
@@ -2384,7 +2445,7 @@ class BinViewer(Frame):
 
             return str_ff_bin_list
 
-        ftpdetect_file = [line for line in os.listdir(self.dir_path) if ("FTPdetectinfo_" in line) and (".txt" in line) and ("original" not in line)]
+        ftpdetect_file = [line for line in os.listdir(self.dir_path) if ("FTPdetectinfo_" in line) and (".txt" in line) and ("original" not in line) and (self.station_id in line)]
         if len(ftpdetect_file) == 0:
             tkMessageBox.showerror("FTPdetectinfo error", "FTPdetectinfo file not found!")
             return False
@@ -3061,8 +3122,10 @@ class BinViewer(Frame):
         # CAMS code, initially zero, set if there's a CAMS-format file in the folder
         cams_code = '000000'
 
+        saved_tstamp = self.timestamp_label.cget("text")
         # Copy confirmed images and write modified FTPdetectinfo, if any files were confirmed
         if len(confirmed_files):
+            self.timestamp_label.configure(text = "Copying confirmed files...")
             for ff_bin in confirmed_files:
 
                 dir_contents = os.listdir(self.dir_path)
@@ -3076,7 +3139,7 @@ class BinViewer(Frame):
                 if ('FTPdetectinfo' in dir_file) and file_ext == '.txt' and not ('_original' in file_name):
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, "".join(dir_file.split('.')[:-1]) + '_pre-confirmation.txt'))
                     continue
-                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json','.csv') or dir_file == '.config':
+                elif file_ext in ('.txt', '.inf', '.rpt', '.log', '.cal', '.hmm', '.json', '.csv') or dir_file == '.config':
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.confirmationDirectory, dir_file))
 
                 # get the CAMS CAL file name, if present, and from it the CAMS code
@@ -3087,9 +3150,24 @@ class BinViewer(Frame):
 
             # Write the filtered FTPdetectinfo content to a new file
             newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, os.path.basename(self.ConfirmationInstance.FTP_detect_file)), 'w')
+
+            self.timestamp_label.configure(text = "writing FTP file...")
             for line in FTPdetectinfoExport:
                 newFTPdetectinfo.write(line)
             newFTPdetectinfo.close()
+
+            # write filtered UFO-compatible R91 csv file 
+            self.timestamp_label.configure(text = "writing UFO file...")
+            _, ufoFile=os.path.split(self.dir_path)
+            ufoFile = ufoFile + '.csv'
+            with open(os.path.join(self.dir_path, ufoFile),'r') as uf:
+                ufoData = uf.readlines()
+
+            newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+            with open(os.path.join(self.ConfirmationInstance.confirmationDirectory, ufoFile), 'w') as newUfoFile:
+                for line in newufoData:
+                    newUfoFile.write(line)
+
 
             # create CAMS compatible ftpdetect file if needed
             if int(cams_code) > 0:
@@ -3101,6 +3179,7 @@ class BinViewer(Frame):
 
                 CamsdetectinfoExport = convert_rmsftp_to_cams(FTPdetectinfoExport, cams_code, cams_cal_file_name)
                 
+                self.timestamp_label.configure(text = "writing CAMS file...")
                 newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, CAMS_file), 'w')
                 for line in CamsdetectinfoExport:
                     newFTPdetectinfo.write(line)
@@ -3109,6 +3188,7 @@ class BinViewer(Frame):
 
         # Copy rejected images and original ftpdetectinfo
         if len(rejected_files):
+            self.timestamp_label.configure(text = "Copying rejected files...")
             dir_contents = os.listdir(self.dir_path)
             for ff_bin in rejected_files:
                 if ff_bin in dir_contents:
@@ -3117,6 +3197,9 @@ class BinViewer(Frame):
                 file_name, file_ext = os.path.splitext(dir_file)
                 if file_ext in ('.txt', '.json') or dir_file == '.config':
                     copy2(os.path.join(self.dir_path, dir_file), os.path.join(self.ConfirmationInstance.rejectionDirectory, dir_file))
+
+        self.timestamp_label.configure(text = saved_tstamp)
+
 
         tkMessageBox.showinfo("Confirmation", "Confirmation statistics:\n  Confirmed: " + str(confirmed_count) + "\n  Rejected: " + str(rejected_count) + "\n  Unchecked: " + str(unchecked_count))
 
@@ -3218,11 +3301,16 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
                 - Insert - toggle Hold levels
                 """)
 
-    def onExit(self):
-        self.quit()
-        self.destroy()
-        #sys.exit(0)  # not required as self.destroy() will properly exit the app.
-
+    def quitApplication(self):
+        if self.filter.get() == 10:
+            tkMessageBox.showerror('Error', 'switch out of video mode before exiting')
+            return 
+        self.filter.set(1)
+        self.update_image(0)
+        time.sleep(0.25)
+        print('quitting')
+        quitBinviewer()
+    
     def initUI(self):
         """ Initialize GUI elements.
         """
@@ -3272,10 +3360,9 @@ gifsicle: Copyright © 1997-2013 Eddie Kohler
         fileMenu.add_command(label = "Open FF* folder", command = self.askdirectory)
 
         fileMenu.add_separator()
-        fileMenu.add_command(label="Exit", command=quitBinviewer)
+        fileMenu.add_command(label="Exit", command=self.quitApplication)
         # fileMenu.add_separator()
 
-        # fileMenu.add_command(label="Exit", underline=0, command=self.onExit)
         self.menuBar.add_cascade(label="File", underline=0, menu=fileMenu)
 
         # Data type menu
@@ -3655,10 +3742,8 @@ def externalVideoInitialize(img_cols):
 
 def quitBinviewer():
     """ Cleanly exits binviewer. """
-
     root.quit()
     root.destroy()
-    #sys.exit(0)  # not required as self.destroy() will properly exit the app.
 
 
 if __name__ == '__main__':
@@ -3717,9 +3802,6 @@ if __name__ == '__main__':
     else:
         root.geometry('+0+0')
 
-    # Add a special function which controls what happens when when the close button is pressed
-    root.protocol('WM_DELETE_WINDOW', quitBinviewer)
-
     # Set window icon
     try:
         root.iconbitmap(os.path.join('.', 'icon.ico'))
@@ -3728,4 +3810,8 @@ if __name__ == '__main__':
 
     # Init the BinViewer UI
     app = BinViewer(root, dir_path=args.dir_path, confirmation=args.confirmation)
+
+    # Add a special function which controls what happens when when the close button is pressed
+    root.protocol('WM_DELETE_WINDOW', app.quitApplication)
+
     root.mainloop()
