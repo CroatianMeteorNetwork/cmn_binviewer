@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.2  # python 2 and 3 compatability
+version = 3.21 
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -819,7 +819,8 @@ class BinViewer(Frame):
         tstamps = []
         for li in range(len(ufoData)):
             if li ==0:
-                newufoData.append(ufoData[0])
+                # skip this for now, we will add it later
+                pass
             else:
                 d = ufoData[li].split(',')
                 ss = float(d[6])
@@ -868,6 +869,9 @@ class BinViewer(Frame):
                         idx = np.where(all_data == ma)
                         newufoData.append(ufoData[idx[0][0]+1])
 
+        tmparr = np.unique(newufoData, axis=0)
+        #print(newufoData, tmparr)
+        newufoData = np.insert(tmparr, 0, ufoData[0])
         return newufoData
 
     def defaultBindings(self):
@@ -3149,12 +3153,13 @@ class BinViewer(Frame):
                     cams_code = splits[1]
 
             # Write the filtered FTPdetectinfo content to a new file
-            newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, os.path.basename(self.ConfirmationInstance.FTP_detect_file)), 'w')
-
-            self.timestamp_label.configure(text = "writing FTP file...")
-            for line in FTPdetectinfoExport:
-                newFTPdetectinfo.write(line)
-            newFTPdetectinfo.close()
+            try:
+                with open(os.path.join(self.ConfirmationInstance.confirmationDirectory, os.path.basename(self.ConfirmationInstance.FTP_detect_file)), 'w') as newFTPdetectinfo:
+                    self.timestamp_label.configure(text = "writing FTP file...")
+                    for line in FTPdetectinfoExport:
+                        newFTPdetectinfo.write(line)
+            except Exception:
+                print('unable to write new FTPDetect file')
 
             # write filtered UFO-compatible R91 csv file 
             self.timestamp_label.configure(text = "writing UFO file...")
@@ -3164,9 +3169,12 @@ class BinViewer(Frame):
                 ufoData = uf.readlines()
 
             newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
-            with open(os.path.join(self.ConfirmationInstance.confirmationDirectory, ufoFile), 'w') as newUfoFile:
-                for line in newufoData:
-                    newUfoFile.write(line)
+            try:
+                with open(os.path.join(self.ConfirmationInstance.confirmationDirectory, ufoFile), 'w') as newUfoFile:
+                    for line in newufoData:
+                        newUfoFile.write(line)
+            except Exception:
+                print('unable to write CSV file')
 
 
             # create CAMS compatible ftpdetect file if needed
@@ -3180,11 +3188,12 @@ class BinViewer(Frame):
                 CamsdetectinfoExport = convert_rmsftp_to_cams(FTPdetectinfoExport, cams_code, cams_cal_file_name)
                 
                 self.timestamp_label.configure(text = "writing CAMS file...")
-                newFTPdetectinfo = open(os.path.join(self.ConfirmationInstance.confirmationDirectory, CAMS_file), 'w')
-                for line in CamsdetectinfoExport:
-                    newFTPdetectinfo.write(line)
-                newFTPdetectinfo.close()
-
+                try:
+                    with open(os.path.join(self.ConfirmationInstance.confirmationDirectory, CAMS_file), 'w') as newFTPdetectinfo:
+                        for line in CamsdetectinfoExport:
+                            newFTPdetectinfo.write(line)
+                except Exception:
+                    print('unable to write CAMS file')
 
         # Copy rejected images and original ftpdetectinfo
         if len(rejected_files):
