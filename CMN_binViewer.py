@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.21 
+version = 3.22 
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -3162,19 +3162,24 @@ class BinViewer(Frame):
                 print('unable to write new FTPDetect file')
 
             # write filtered UFO-compatible R91 csv file 
-            self.timestamp_label.configure(text = "writing UFO file...")
-            _, ufoFile=os.path.split(self.dir_path)
-            ufoFile = ufoFile + '.csv'
-            with open(os.path.join(self.dir_path, ufoFile),'r') as uf:
-                ufoData = uf.readlines()
-
-            newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+            self.timestamp_label.configure(text = "Updating UFO file...")
             try:
-                with open(os.path.join(self.ConfirmationInstance.confirmationDirectory, ufoFile), 'w') as newUfoFile:
-                    for line in newufoData:
-                        newUfoFile.write(line)
+                ufoFile = glob.glob(os.path.join(self.dir_path, '*.csv'))[0]
+
+                #_, ufoFile=os.path.split(self.dir_path)
+                # ufoFile = ufoFile + '.csv'
+                with open(os.path.join(self.dir_path, ufoFile),'r') as uf:
+                    ufoData = uf.readlines()
+
+                newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+                try:
+                    with open(os.path.join(self.ConfirmationInstance.confirmationDirectory, ufoFile), 'w') as newUfoFile:
+                        for line in newufoData:
+                            newUfoFile.write(line)
+                except Exception:
+                    print('unable to write CSV file')
             except Exception:
-                print('unable to write CSV file')
+                print('CSV file not present')
 
 
             # create CAMS compatible ftpdetect file if needed
