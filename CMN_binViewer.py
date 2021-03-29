@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.22 
+version = 3.23
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -3276,14 +3276,17 @@ class BinViewer(Frame):
 
     def show_about(self):
         tkMessageBox.showinfo("About",
-            """CMN_binViewer version: """ + str(version) + """\n
-            Croatian Meteor Network\n
-            http://cmn.rgn.hr/\n
-            Copyright © 2016 Denis Vida
-            E-mail: denis.vida@gmail.com\n
-Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
-gifsicle: Copyright © 1997-2013 Eddie Kohler
-""")
+            """CMN_binViewer version: """ + str(version) + """
+    Fixed small bugs in confirmation process\n
+        Croatian Meteor Network
+        http://cmn.rgn.hr/
+        Copyright © 2016 Denis Vida
+        E-mail: denis.vida@gmail.com
+    Reading FF*.bin files: based on Matlab scripts 
+    by Peter S. Gural
+    gifsicle: Copyright © 1997-2013 Eddie Kohler
+    Miscellaneous improvements: Mark McIntyre, 2020-21
+    """)
 
     def show_key_bindings(self):
         tkMessageBox.showinfo("Key bindings",
