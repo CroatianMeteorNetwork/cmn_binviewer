@@ -78,7 +78,7 @@ disable_UI_video = False
 global_bg = "Black"
 global_fg = "Gray"
 
-config_file = 'config.ini'
+config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.ini')
 
 log_directory = 'CMN_binViewer_logs'
 
