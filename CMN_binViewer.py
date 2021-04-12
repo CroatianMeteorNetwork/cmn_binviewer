@@ -3783,6 +3783,15 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if getattr(sys, 'frozen', False) is True:
+        # frozen
+        dir_ = os.path.dirname(sys.executable)
+    else:
+        # unfrozen
+        dir_ = os.path.dirname(os.path.realpath(__file__))
+    config_file = os.path.join(dir_, 'config.ini')
+    
+
     # Catch unhandled exceptions in Tkinter
     tk.CallWrapper = Catcher
 
@@ -3815,6 +3824,8 @@ if __name__ == '__main__':
     # Log program start
     log.info("Program start")
     log.info("Version: " + str(version))
+    log.info('config file is {}'.format(config_file))
+
 
     # Initialize main window
     root = tk.Tk()
