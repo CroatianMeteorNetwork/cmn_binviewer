@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.23
+version = 3.24
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -827,7 +827,10 @@ class BinViewer(Frame):
                 ss = float(d[6])
                 sec = int(float(ss))
                 us = int((ss-sec)*1000)*1000  # avoid rounding error - data is in millisecs
-                thisdt = datetime.datetime(int(d[1]), int(d[2]), int(d[3]), int(d[4]), int(d[5]), sec, us)
+                # get the datetime without the seconds
+                thisdt = datetime.datetime(int(d[1]), int(d[2]), int(d[3]), int(d[4]), int(d[5]),0,us)
+                # then add on the seconds. This is to cater for seconds rounding up to 60
+                thisdt = thisdt + datetime.timedelta(seconds=sec)
                 if sys.version_info[0] >=3:
                     tstamps.append(thisdt.timestamp())
                 else:
@@ -3166,13 +3169,13 @@ class BinViewer(Frame):
             self.timestamp_label.configure(text = "Updating UFO file...")
             try:
                 ufoFile = glob.glob(os.path.join(self.dir_path, '*.csv'))[0]
+                print(self.dir_path, ufoFile)
 
-                #_, ufoFile=os.path.split(self.dir_path)
-                # ufoFile = ufoFile + '.csv'
-                with open(os.path.join(self.dir_path, ufoFile),'r') as uf:
+                with open(ufoFile,'r') as uf:
                     ufoData = uf.readlines()
-
+                print('about to call updateUFOData')
                 newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+                print('creating output')
                 try:
                     _, ufof = os.path.split(ufoFile)
                     fnam = os.path.join(self.ConfirmationInstance.confirmationDirectory, ufof)
@@ -3180,9 +3183,9 @@ class BinViewer(Frame):
                         for line in newufoData:
                             newUfoFile.write(line)
 
-                except Exception:
-                    print('unable to write CSV file')
-            except Exception:
+                except OSError as error:
+                    print('unable to write CSV file, {}', error)
+            except FileNotFoundError:
                 print('CSV file not present')
 
 
