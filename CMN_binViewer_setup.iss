@@ -46,6 +46,6 @@ begin
       Result := True;
     end else
       Result := False;
-    
-  end;
+  end else 
+    Result := True;
 end;
