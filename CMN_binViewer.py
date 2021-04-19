@@ -3169,13 +3169,10 @@ class BinViewer(Frame):
             self.timestamp_label.configure(text = "Updating UFO file...")
             try:
                 ufoFile = glob.glob(os.path.join(self.dir_path, '*.csv'))[0]
-                print(self.dir_path, ufoFile)
-
+                
                 with open(ufoFile,'r') as uf:
                     ufoData = uf.readlines()
-                print('about to call updateUFOData')
                 newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
-                print('creating output')
                 try:
                     _, ufof = os.path.split(ufoFile)
                     fnam = os.path.join(self.ConfirmationInstance.confirmationDirectory, ufof)
