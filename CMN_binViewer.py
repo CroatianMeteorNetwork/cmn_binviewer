@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.24
+version = 3.3
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -600,7 +600,7 @@ class SuperUnbind():
 class BinViewer(Frame):
     """ Main CMN_binViewer window.
     """
-    def __init__(self, parent, dir_path=None, confirmation=False):
+    def __init__(self, parent, dir_path=None, confirmation=False, ftpdetectfile=''):
         """ Runs only when the viewer class is created (i.e. on the program startup only).
 
         Arguments:
@@ -811,7 +811,7 @@ class BinViewer(Frame):
 
         # Run confirmation if the flag was given
         if confirmation:
-            self.confirmationStart()
+            self.confirmationStart(ftpDetectFile=os.path.basename(ftpdetectfile))
 
     def updateUFOData(self, ftpdata, ufoData):
 
@@ -2723,7 +2723,7 @@ class BinViewer(Frame):
             self.update_listbox(listbox_entries)
             self.move_top(0)
 
-    def confirmationStart(self):
+    def confirmationStart(self, ftpDetectFile=''):
         """ Begin with pre-confirmation preparations.
         """
 
@@ -2772,10 +2772,8 @@ class BinViewer(Frame):
             if ('FTPdetectinfo' in image) and ('.txt' in image):
                 ftp_detect_list.append(image)
 
-        ftpDetectFile = ''
-
         # Check if there are several FTPdetectinfo files in the directory
-        if len(ftp_detect_list) > 1:
+        if ftpDetectFile == '' and len(ftp_detect_list) > 1:
 
             # Offer the user to choose from several FTPdetectinfo files
 
@@ -2806,13 +2804,9 @@ class BinViewer(Frame):
             # Choose the selected FTPdetectinfo file
             ftpDetectFile = ftp_detect_list[ftp_choice.get()]
 
-        elif len(ftp_detect_list) == 1:
+        elif ftpDetectFile == '' and len(ftp_detect_list) == 1:
             # Choose the only one found FTPdetectinfo file
             ftpDetectFile = ftp_detect_list[0]
-
-        else:
-            # If not FTPdetectinfo files were found, show an error message
-            ftpDetectFile = ''
 
         if ftpDetectFile == '':
             tkMessageBox.showerror("FTPdetectinfo error", "No FTPdetectinfo file could be found in directory: " + self.dir_path)
@@ -3777,6 +3771,7 @@ if __name__ == '__main__':
 
     # Add confirmation argument
     parser.add_argument("-c", "--confirmation", action="store_true", help="Run program in confirmation mode right away.")
+    parser.add_argument("-f", "--ftpdetectfile", type=str, help="Path to FTPDetectInfo file to use in confirmation.", default='')
 
     args = parser.parse_args()
 
@@ -3841,7 +3836,7 @@ if __name__ == '__main__':
         pass
 
     # Init the BinViewer UI
-    app = BinViewer(root, dir_path=args.dir_path, confirmation=args.confirmation)
+    app = BinViewer(root, dir_path=args.dir_path, confirmation=args.confirmation, ftpdetectfile=args.ftpdetectfile)
 
     # Add a special function which controls what happens when when the close button is pressed
     root.protocol('WM_DELETE_WINDOW', app.quitApplication)
