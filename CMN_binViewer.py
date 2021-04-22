@@ -3165,25 +3165,27 @@ class BinViewer(Frame):
                 print('unable to write new FTPDetect file')
 
             # write filtered UFO-compatible R91 csv file 
-            self.timestamp_label.configure(text = "Updating UFO file...")
-            try:
-                ufoFile = glob.glob(os.path.join(self.dir_path, '*.csv'))[0]
-                
-                with open(ufoFile,'r') as uf:
-                    ufoData = uf.readlines()
-                newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+            if sys.version_info[0] > 2:
+                self.timestamp_label.configure(text = "Updating UFO file...")
                 try:
-                    _, ufof = os.path.split(ufoFile)
-                    fnam = os.path.join(self.ConfirmationInstance.confirmationDirectory, ufof)
-                    with open(fnam, 'w') as newUfoFile:
-                        for line in newufoData:
-                            newUfoFile.write(line)
+                    ufoFile = glob.glob(os.path.join(self.dir_path, '*.csv'))[0]
+                    
+                    with open(ufoFile,'r') as uf:
+                        ufoData = uf.readlines()
+                    newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+                    try:
+                        _, ufof = os.path.split(ufoFile)
+                        fnam = os.path.join(self.ConfirmationInstance.confirmationDirectory, ufof)
+                        with open(fnam, 'w') as newUfoFile:
+                            for line in newufoData:
+                                newUfoFile.write(line)
 
-                except OSError as error:
-                    print('unable to write CSV file, {}', error)
-            except FileNotFoundError:
-                print('CSV file not present')
-
+                    except OSError as error:
+                        print('unable to write CSV file, {}', error)
+                except FileNotFoundError:
+                    print('CSV file not present')
+            else:
+                print('ufo filtering doesnt work on Python 2.7')
 
             # create CAMS compatible ftpdetect file if needed
             if int(cams_code) > 0:
