@@ -84,6 +84,11 @@ log_directory = 'CMN_binViewer_logs'
 
 tempImage = 0
 
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 
 class BackgroundTask():
 
