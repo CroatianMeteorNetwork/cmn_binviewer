@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.22 
+version = 3.3
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -83,6 +83,11 @@ config_file = 'config.ini'
 log_directory = 'CMN_binViewer_logs'
 
 tempImage = 0
+
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
 
 
 class BackgroundTask():
@@ -600,7 +605,7 @@ class SuperUnbind():
 class BinViewer(Frame):
     """ Main CMN_binViewer window.
     """
-    def __init__(self, parent, dir_path=None, confirmation=False):
+    def __init__(self, parent, dir_path=None, confirmation=False, ftpdetectfile=''):
         """ Runs only when the viewer class is created (i.e. on the program startup only).
 
         Arguments:
@@ -811,7 +816,7 @@ class BinViewer(Frame):
 
         # Run confirmation if the flag was given
         if confirmation:
-            self.confirmationStart()
+            self.confirmationStart(ftpDetectFile=os.path.basename(ftpdetectfile))
 
     def updateUFOData(self, ftpdata, ufoData):
 
@@ -827,7 +832,10 @@ class BinViewer(Frame):
                 ss = float(d[6])
                 sec = int(float(ss))
                 us = int((ss-sec)*1000)*1000  # avoid rounding error - data is in millisecs
-                thisdt = datetime.datetime(int(d[1]), int(d[2]), int(d[3]), int(d[4]), int(d[5]), sec, us)
+                # get the datetime without the seconds
+                thisdt = datetime.datetime(int(d[1]), int(d[2]), int(d[3]), int(d[4]), int(d[5]),0,us)
+                # then add on the seconds. This is to cater for seconds rounding up to 60
+                thisdt = thisdt + datetime.timedelta(seconds=sec)
                 if sys.version_info[0] >=3:
                     tstamps.append(thisdt.timestamp())
                 else:
@@ -2720,7 +2728,7 @@ class BinViewer(Frame):
             self.update_listbox(listbox_entries)
             self.move_top(0)
 
-    def confirmationStart(self):
+    def confirmationStart(self, ftpDetectFile=''):
         """ Begin with pre-confirmation preparations.
         """
 
@@ -2769,10 +2777,8 @@ class BinViewer(Frame):
             if ('FTPdetectinfo' in image) and ('.txt' in image):
                 ftp_detect_list.append(image)
 
-        ftpDetectFile = ''
-
         # Check if there are several FTPdetectinfo files in the directory
-        if len(ftp_detect_list) > 1:
+        if ftpDetectFile == '' and len(ftp_detect_list) > 1:
 
             # Offer the user to choose from several FTPdetectinfo files
 
@@ -2803,13 +2809,9 @@ class BinViewer(Frame):
             # Choose the selected FTPdetectinfo file
             ftpDetectFile = ftp_detect_list[ftp_choice.get()]
 
-        elif len(ftp_detect_list) == 1:
+        elif ftpDetectFile == '' and len(ftp_detect_list) == 1:
             # Choose the only one found FTPdetectinfo file
             ftpDetectFile = ftp_detect_list[0]
-
-        else:
-            # If not FTPdetectinfo files were found, show an error message
-            ftpDetectFile = ''
 
         if ftpDetectFile == '':
             tkMessageBox.showerror("FTPdetectinfo error", "No FTPdetectinfo file could be found in directory: " + self.dir_path)
@@ -3163,28 +3165,27 @@ class BinViewer(Frame):
                 print('unable to write new FTPDetect file')
 
             # write filtered UFO-compatible R91 csv file 
-            self.timestamp_label.configure(text = "Updating UFO file...")
-            try:
-                ufoFile = glob.glob(os.path.join(self.dir_path, '*.csv'))[0]
-
-                #_, ufoFile=os.path.split(self.dir_path)
-                # ufoFile = ufoFile + '.csv'
-                with open(os.path.join(self.dir_path, ufoFile),'r') as uf:
-                    ufoData = uf.readlines()
-
-                newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+            if sys.version_info[0] > 2:
+                self.timestamp_label.configure(text = "Updating UFO file...")
                 try:
-                    _, ufof = os.path.split(ufoFile)
-                    fnam = os.path.join(self.ConfirmationInstance.confirmationDirectory, ufof)
-                    with open(fnam, 'w') as newUfoFile:
-                        for line in newufoData:
-                            newUfoFile.write(line)
+                    ufoFile = glob.glob(os.path.join(self.dir_path, '*.csv'))[0]
+                    
+                    with open(ufoFile,'r') as uf:
+                        ufoData = uf.readlines()
+                    newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+                    try:
+                        _, ufof = os.path.split(ufoFile)
+                        fnam = os.path.join(self.ConfirmationInstance.confirmationDirectory, ufof)
+                        with open(fnam, 'w') as newUfoFile:
+                            for line in newufoData:
+                                newUfoFile.write(line)
 
-                except Exception:
-                    print('unable to write CSV file')
-            except Exception:
-                print('CSV file not present')
-
+                    except OSError as error:
+                        print('unable to write CSV file, {}', error)
+                except FileNotFoundError:
+                    print('CSV file not present')
+            else:
+                print('ufo filtering doesnt work on Python 2.7')
 
             # create CAMS compatible ftpdetect file if needed
             if int(cams_code) > 0:
@@ -3276,14 +3277,17 @@ class BinViewer(Frame):
 
     def show_about(self):
         tkMessageBox.showinfo("About",
-            """CMN_binViewer version: """ + str(version) + """\n
-            Croatian Meteor Network\n
-            http://cmn.rgn.hr/\n
-            Copyright © 2016 Denis Vida
-            E-mail: denis.vida@gmail.com\n
-Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
-gifsicle: Copyright © 1997-2013 Eddie Kohler
-""")
+            """CMN_binViewer version: """ + str(version) + """
+    Fixed small bugs in confirmation process\n
+        Croatian Meteor Network
+        http://cmn.rgn.hr/
+        Copyright © 2016 Denis Vida
+        E-mail: denis.vida@gmail.com
+    Reading FF*.bin files: based on Matlab scripts 
+    by Peter S. Gural
+    gifsicle: Copyright © 1997-2013 Eddie Kohler
+    Miscellaneous improvements: Mark McIntyre, 2020-21
+    """)
 
     def show_key_bindings(self):
         tkMessageBox.showinfo("Key bindings",
@@ -3774,8 +3778,18 @@ if __name__ == '__main__':
 
     # Add confirmation argument
     parser.add_argument("-c", "--confirmation", action="store_true", help="Run program in confirmation mode right away.")
+    parser.add_argument("-f", "--ftpdetectfile", type=str, help="Path to FTPDetectInfo file to use in confirmation.", default='')
 
     args = parser.parse_args()
+
+    if getattr(sys, 'frozen', False) is True:
+        # frozen
+        dir_ = os.path.dirname(sys.executable)
+    else:
+        # unfrozen
+        dir_ = os.path.dirname(os.path.realpath(__file__))
+    config_file = os.path.join(dir_, 'config.ini')
+    
 
     # Catch unhandled exceptions in Tkinter
     tk.CallWrapper = Catcher
@@ -3809,6 +3823,8 @@ if __name__ == '__main__':
     # Log program start
     log.info("Program start")
     log.info("Version: " + str(version))
+    log.info('config file is {}'.format(config_file))
+
 
     # Initialize main window
     root = tk.Tk()
@@ -3827,7 +3843,7 @@ if __name__ == '__main__':
         pass
 
     # Init the BinViewer UI
-    app = BinViewer(root, dir_path=args.dir_path, confirmation=args.confirmation)
+    app = BinViewer(root, dir_path=args.dir_path, confirmation=args.confirmation, ftpdetectfile=args.ftpdetectfile)
 
     # Add a special function which controls what happens when when the close button is pressed
     root.protocol('WM_DELETE_WINDOW', app.quitApplication)
