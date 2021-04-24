@@ -969,8 +969,20 @@ class BinViewer(Frame):
         try:
             config_lines = open(config_file, 'r').readlines()
         except:
-            tkMessageBox.showerror("Configuration file " + config_file + " not found! Program files are compromised!")
-            return read_list
+            log.info('creating default config file')
+            self.layout_vertical.set(False)
+            self.fps = IntVar()
+            self.fps.set(fps)
+            self.externalVideoOn = IntVar()
+            self.externalVideoOn.set(external_video)
+            self.edge_marker = IntVar()
+            self.edge_marker.set(edge_marker)
+            self.external_guidelines = IntVar()
+            self.external_guidelines.set(external_guidelines)
+            self.image_resize_factor = IntVar()
+            self.image_resize_factor.set(image_resize_factor)
+            self.write_config()
+            config_lines = open(config_file, 'r').readlines()
 
         for line in config_lines:
             if line[0] == '#' or line == '':
