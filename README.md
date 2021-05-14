@@ -29,16 +29,17 @@ Run in terminal:
 sudo apt-get update
 sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev
 
+Then clone this repository:
+```
+git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
+```
+
 Now create a virtual environment, activate it, and install the libraries:
 ---
 virtualenv -p python3 ~/vBinviewer
 source ~/vBinviewer/bin/activate
+cd cmn_binviewer
 pip -y install -r requirements.txt
-```
-
-Then clone this repository:
-```
-git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
 ```
 
 Finally, enter the code directory activate your virtual environment and run the program:
