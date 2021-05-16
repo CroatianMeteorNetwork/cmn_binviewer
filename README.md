@@ -76,7 +76,6 @@ Activate the environment and install the libraries:
 ```
 conda activate binviewer
 pip install -y -r cmn_binviewer/requirements.txt
-
 ```
 Then run the application :
 ---

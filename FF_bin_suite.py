@@ -28,6 +28,7 @@ import platform
 import six
 
 import numpy as np
+
 try:
     import pyfits
 except:
