@@ -65,19 +65,19 @@ Create a virtual environment
 conda create --name binviewer python=3
 
 ```
-
-Activate the environment and install the libraries:
-
-```
-conda activate binviewer
-pip install -y -r requirements.txt
-
-```
 Then clone this repository:
 ```
 git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
 
 --- 
+
+Activate the environment and install the libraries:
+
+```
+conda activate binviewer
+pip install -y -r cmn_binviewer/requirements.txt
+
+```
 Then run the application :
 ---
 cd cmn_binviewer
