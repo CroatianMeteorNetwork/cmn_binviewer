@@ -10,18 +10,17 @@ AppName=CMN_binViewer
 AppVersion=3.3
 AppPublisher=Croatian Meteor Network
 AppPublisherURL=http://cmn.rgn.hr/
-DefaultDirName={commonpf64}\CMN_binViewer
+DefaultDirName={commonpf}\CMN_binViewer
 DefaultGroupName=CMN_binViewer
 UninstallDisplayIcon={app}\CMN_binViewer.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir="."
-OutputBaseFilename=CMN_binViewer-setup64
+OutputBaseFilename=CMN_binViewer-setup32
 
 [Files]
-Source: ".\build\exe.win-amd64-3.8\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
-Source: ".\build\exe.win-amd64-3.8\config.ini"; DestDir: "{app}"; Permissions: users-modify
-
+Source: ".\build\exe.win32-3.8\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: ".\build\exe.win32-3.8\config.ini"; DestDir: "{app}"; Permissions: users-modify
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; 
 
@@ -46,6 +45,7 @@ begin
       Result := True;
     end else
       Result := False;
-  end else 
+    
+  end else
     Result := True;
 end;

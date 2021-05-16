@@ -12,7 +12,8 @@ def logsort_date(date, provided=False):
         year, month, day, hour, minute, sec = date
     else:
         date=date.split(os.sep)
-        if '' in date: date.remove('')
+        if '' in date: 
+            date.remove('')
         year, month, day, hour, minute, sec = map(int, date[-1].split('_'))
 
     today=dt.datetime(year, month, day, hour, minute, sec)
@@ -43,12 +44,15 @@ def add_zero(num):
     return '0000'+str('%.3f' % num)
 
 def add_zero_hms(num):
-    if num>=10: return str(num)
+    if num>=10: 
+        return str(num)
     return '0'+str(num)
 
 def add_zero_ms(num):
-    if num>=100: return str(num)
-    if num>=10: return '0'+str(num)
+    if num>=100: 
+        return str(num)
+    if num>=10: 
+        return '0'+str(num)
     return '00'+str(num)
 
 def sec2time(sec): #Seconds to hh:mm:ss:sss format
@@ -64,7 +68,7 @@ def stop_time(bmp, logfile_list_stop): #Getting stop time from logfile for parti
             return line.split()[4]
 
 def mtp2detected(directory, date=None): #Function for making fake detected files (logsorts and such)
-    if date != None:
+    if date is not None:
         date = logsort_date(date, provided = True)
     else:
         date=logsort_date(directory)
@@ -73,7 +77,7 @@ def mtp2detected(directory, date=None): #Function for making fake detected files
         if os.path.isfile(mtp_detections):
 
             z=0
-            l=0
+            ll=0
 
             logfile_list_stop=[]
             mtp_detections_list=[]
@@ -94,21 +98,21 @@ def mtp2detected(directory, date=None): #Function for making fake detected files
                     logfile_list_stop.append(line)
 
             for line in open(mtp_detections): #Reading MTP_detections
-                if l<2:
-                    l=l+1
+                if ll<2:
+                    ll=ll+1
                     continue
                 mtp_detections_list.append(line)
                 
-            try:
-                exptime=float(logfile_line1.split(':')[1]) #Getting exp time
-            except:
-                print 'Error in logfile!!!'
-                return False
+            # try:
+            #    exptime=float(logfile_line1.split(':')[1]) #Getting exp time
+            # except:
+            #    print('Error in logfile!!!')
+            #    return False
             
             for event in mtp_detections_list:
 
                 event=event.split()
-                mtp_image=int(event[1][2:])
+                # mtp_image=int(event[1][2:])
                 mtp_frame=float(event[2]) #Changed from int!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 try:
                     fsec=stop_time(event[1][2:], logfile_list_stop).split(':')
@@ -122,7 +126,9 @@ def mtp2detected(directory, date=None): #Function for making fake detected files
 
                 fsec=fsec-0.04*(256-mtp_frame) #Maybe (mtp_frame-3) ?
 
-                if fsec<0: fsec=fsec+86400 #If stop time is after midnight, and meteor frames before, we need to add a day of seconds (otherwise the seconds would go to minus)
+                if fsec<0: 
+                    fsec=fsec+86400 #If stop time is after midnight, and meteor frames before, we need to add a day of seconds (otherwise the seconds would go to minus)
+
                 logsort_line=event[0]+' '+event[2]+' '+sec2time(fsec)+' '+add_zero(fsec)+' '+event[1]+' '+'00'+' '+'000'+' '+event[3]+' '+event[4]+' '+event[5]
                 logsort_list.append(logsort_line)
 

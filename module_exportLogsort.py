@@ -14,10 +14,11 @@ def mkdir_p(path):
     """
     try:
         os.makedirs(path)
-    except OSError, exc:
+    except OSError as exc:
         if exc.errno == errno.EEXIST:
             pass
-        else: raise
+        else: 
+            raise
 
 def _makeCAMS2CMNdict(dir_path):
     """ Returns a dictionary of names of converted FFbin files to fake Skypatrol C_ files.
@@ -26,7 +27,7 @@ def _makeCAMS2CMNdict(dir_path):
     dict_path = dir_path+capturestats_dict_name
 
     if not os.path.exists(dict_path):
-        print 'No '+capturestats_dict_name+' found!'
+        print('No '+capturestats_dict_name+' found!')
         return False
 
     cams2cmn_dict = {}
@@ -43,7 +44,7 @@ def _makeCAMS2CMNdict(dir_path):
 def _getLogsortLines(dir_path, cams2cmn_dict, ff_bin, met_no):
     """ Returns logsort lines of given meteor.
     """
-    if cams2cmn_dict != None:
+    if cams2cmn_dict is not None:
         # CAMS
         c_file = 'C_'+cams2cmn_dict[ff_bin]
     else:
@@ -98,7 +99,7 @@ def exportLogsort(dir_source, dir_dest, data_type, ff_bin, met_no, start_frame, 
     logfile_name = 'logfile.txt'
 
     for line in os.listdir(dir_source):
-        if ('FTPdetectinfo' in line) and (not 'original' in line):
+        if ('FTPdetectinfo' in line) and ('original' not in line):
             FTPdetect_status = True
             FTPdetect_name = line
 
@@ -121,13 +122,13 @@ def exportLogsort(dir_source, dir_dest, data_type, ff_bin, met_no, start_frame, 
         run_cams2cmn(dir_dest, 6, skip_calstars = True)
 
         # Convert MTPdetections to LOG_SORT.INF
-        print 'Converting MTPdetections to LOG_SORT.INF...'
+        print('Converting MTPdetections to LOG_SORT.INF...')
         mtp2detected(dir_dest, date = _getRecordDate(dir_dest + capturestats_name))
-        print 'Done!'
+        print('Done!')
 
         cams2cmn_dict = _makeCAMS2CMNdict(dir_dest)
 
-        if cams2cmn_dict == False:
+        if cams2cmn_dict is False:
             return False
 
         logsort_list = _getLogsortLines(dir_dest, cams2cmn_dict, ff_bin, met_no)
@@ -147,7 +148,7 @@ def exportLogsort(dir_source, dir_dest, data_type, ff_bin, met_no, start_frame, 
 
     logsort_list = _adjustLogsort(logsort_list, fps, start_frame = start_frame, end_frame = end_frame)
 
-    if logsort_list == False:
+    if logsort_list is False:
         # GENERIC LOGSORT!
         pass
 
@@ -164,7 +165,7 @@ def replaceLogsort(logsort_list, logsort_path, header=None):
     """ Write logsort list to a LOG_SORT.INF file.
     """
     if os.path.exists(logsort_path):
-        if header == None:
+        if header is None:
             # Read header from old logsort
             old_logsort_header = open(logsort_path).readlines()[:5]
         else:
@@ -242,7 +243,7 @@ def _adjustLogsort(logsort_list, fps, start_frame, end_frame):
 
     else:
         # Too little frames for detection-based logsort, use the generic one!
-        print 'Too little frames for detection-based logsort, use the generic one!'
+        print('Too little frames for detection-based logsort, use the generic one!')
         return False
 
     time_difference = 1.0 / (fps * ((int(interlaced) + 1)))
@@ -423,7 +424,7 @@ def postAnalysisFix(logsort_path, data_type):
         parent_path = os.path.normpath(os.path.join(logsort_path, "..")) + os.sep
         CAMS2CMNdict = _makeCAMS2CMNdict(parent_path)
         
-        if CAMS2CMNdict == False:
+        if CAMS2CMNdict is False:
             return False
 
     image_list = []
