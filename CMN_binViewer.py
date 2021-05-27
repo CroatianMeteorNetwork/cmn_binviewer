@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.3
+version = 3.31
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -1024,7 +1024,7 @@ class BinViewer(Frame):
         external_guidelines = int(self.external_guidelines.get())
         image_resize_factor = int(self.image_resize_factor.get())
 
-        if fps not in (25, 30):
+        if fps not in (25, 30, 50):
             fps = 25
 
         try:
