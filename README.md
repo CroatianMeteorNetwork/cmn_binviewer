@@ -26,8 +26,8 @@ Latest Windows x86 build (legacy): https://www.dropbox.com/s/o6jn1ecsl7trdxk/CMN
 Run in terminal:
 
 ```
-sudo apt-get update
-sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev
+sudo apt-get update 
+sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev  libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev
 ```
 
 Then clone this repository:
@@ -37,23 +37,24 @@ git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
 
 Now create a virtual environment, activate it, and install the libraries:
 ---
-virtualenv -p python3 ~/vBinviewer
-source ~/vBinviewer/bin/activate
-cd cmn_binviewer
-pip -y install -r requirements.txt
+virtualenv -p python3 ~/vBinviewer  
+source ~/vBinviewer/bin/activate  
+cd cmn_binviewer  
+pip -y install -r requirements.txt  
 ```
 
 Finally, enter the code directory activate your virtual environment and run the program:
 ```
-cd cmn_binviewer
-source ~/vBinviewer/bin/activate
-python CMN_binViewer.py
+cd cmn_binviewer  
+source ~/vBinviewer/bin/activate  
+python CMN_binViewer.py  
 
 ```
 Potential issues: 
 If python3 isn't available, you can try python2.7 instead when creating the virtualenv
-If you get an out of memory error while installing the libraries, use
-TMPDIR=~/tmp pip -y install -r requirements.txt
+If you get an out of memory error while installing the libraries, use  
+
+TMPDIR=~/tmp pip -y install -r requirements.txt  
 
 
 ## Installing using Anaconda (Windows, Linux or other platforms)
