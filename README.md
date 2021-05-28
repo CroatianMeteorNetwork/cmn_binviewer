@@ -13,8 +13,8 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 
 **Installing Windows EXE**
 
-NB: you must uninstall any existing version before installing the new version. Otherwise you may get
-unexpected DLL errors ! 
+Note: the installer will remove any existing version firs. This is to avoid unexpected DLL errors 
+due to updates in python or windows DLLs. 
 
 Latest Windows x64 build (recommended): https://www.dropbox.com/s/4eutahlxojrkvsa/CMN_binViewer-setup64.exe?dl=0
 
@@ -36,7 +36,8 @@ git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
 ```
 
 Now create a virtual environment, activate it, and install the libraries:
----
+
+```
 virtualenv -p python3 ~/vBinviewer  
 source ~/vBinviewer/bin/activate  
 cd cmn_binviewer  
@@ -72,7 +73,7 @@ Then clone the repository:
 ```
 git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
 
---- 
+```
 
 Activate the environment and install the libraries:
 
