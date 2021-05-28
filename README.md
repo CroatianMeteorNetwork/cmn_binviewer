@@ -41,7 +41,7 @@ Now create a virtual environment, activate it, and install the libraries:
 virtualenv -p python3 ~/vBinviewer  
 source ~/vBinviewer/bin/activate  
 cd cmn_binviewer  
-pip -y install -r requirements.txt  
+pip install -r requirements.txt  
 ```
 
 Finally, enter the code directory activate your virtual environment and run the program:
