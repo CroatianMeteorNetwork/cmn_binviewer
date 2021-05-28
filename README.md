@@ -51,12 +51,12 @@ source ~/vBinviewer/bin/activate
 python CMN_binViewer.py  
 
 ```
-Potential issues: 
-If python3 isn't available, you can try python2.7 instead when creating the virtualenv
+### Potential issues:  
+If python3 isn't available, you can try python2.7 instead when creating the virtualenv  
 If you get an out of memory error while installing the libraries, use  
-
+```
 TMPDIR=~/tmp pip -y install -r requirements.txt  
-
+```
 
 ## Installing using Anaconda (Windows, Linux or other platforms)
 
@@ -66,13 +66,11 @@ First open a terminal, or a Windows command or powershell prompt then:
 Create a virtual environment
 ```
 conda create --name binviewer python=3
-
 ```
 
 Then clone the repository:
 ```
 git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
-
 ```
 
 Activate the environment and install the libraries:
@@ -80,21 +78,20 @@ Activate the environment and install the libraries:
 ```
 conda activate binviewer
 pip install -y -r cmn_binviewer/requirements.txt
-
 ```
 
 Then run the application :
----
+```
 cd cmn_binviewer
 conda activate binviewer
 python CMN_binViewer.py
-
+```
 
 ## Build scripts
 
 Build scripts are provided for building a Windows exe - setup.py and COMPILE_from_setup.bat. 
 To build under windows, create a suitable virtual environment and clone the repository as above,
-then activate the virtualenv and run "COMPILE_from_setup.bat"
+then activate the virtualenv and run "COMPILE_from_setup.bat" or "python setup.py build"
 
 
 Copyright (c) 2014-2015, Denis Vida
