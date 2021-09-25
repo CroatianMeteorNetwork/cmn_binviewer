@@ -642,7 +642,7 @@ class BinViewer(Frame):
         self.layout_vertical = BooleanVar()  # Layout variable
 
         # Read configuration file
-        orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines, image_resize_factor = self.readConfig()
+        orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines, image_resize_factor, userejected = self.readConfig()
 
         # Image resize factor
         self.image_resize_factor = IntVar()
@@ -731,6 +731,9 @@ class BinViewer(Frame):
 
         self.edge_marker = IntVar()
         self.edge_marker.set(edge_marker)
+
+        self.userejected = IntVar()
+        self.userejected.set(userejected)
 
         self.external_guidelines = IntVar()
         self.external_guidelines.set(external_guidelines)
@@ -963,6 +966,7 @@ class BinViewer(Frame):
         edge_marker = 1
         external_guidelines = 1
         image_resize_factor = 1
+        userejected = 0
 
         read_list = (orientation, fps)
 
@@ -977,6 +981,8 @@ class BinViewer(Frame):
             self.externalVideoOn.set(external_video)
             self.edge_marker = IntVar()
             self.edge_marker.set(edge_marker)
+            self.userejected = IntVar()
+            self.userejected.set(userejected)
             self.external_guidelines = IntVar()
             self.external_guidelines.set(external_guidelines)
             self.image_resize_factor = IntVar()
@@ -1004,13 +1010,16 @@ class BinViewer(Frame):
             if 'edge_marker' in line[0]:
                 edge_marker = int(line[1])
 
+            if 'userejected' in line[0]:
+                userejected = int(line[1])
+
             if 'external_guidelines' in line[0]:
                 external_guidelines = int(line[1])
 
             if 'image_resize_factor' in line[0]:
                 image_resize_factor = int(line[1])
 
-        read_list = (orientation, fps, dir_path, external_video, edge_marker, external_guidelines, image_resize_factor)
+        read_list = (orientation, fps, dir_path, external_video, edge_marker, external_guidelines, image_resize_factor, userejected)
 
         return read_list
 
@@ -1021,6 +1030,7 @@ class BinViewer(Frame):
         fps = int(self.fps.get())
         external_video = int(self.externalVideoOn.get())
         edge_marker = int(self.edge_marker.get())
+        userejected = int(self.userejected.get())
         external_guidelines = int(self.external_guidelines.get())
         image_resize_factor = int(self.image_resize_factor.get())
 
@@ -1048,18 +1058,20 @@ class BinViewer(Frame):
                 new_path.append(line)
 
             temp_path = (os.sep).join(new_path)
-
-            # Write config parameters to config.ini, but check for non-ascii characters in the directory path
-            try:
-                new_config.write("dir_path = " + temp_path.strip() + "\n")
-            except:
-                # Non ascii - characters found
-                tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
-                sys.exit(0)
-
+        else:
+            temp_path = self.dir_path
+        
+        # Write config parameters to config.ini, but check for non-ascii characters in the directory path
+        try:
+            new_config.write("dir_path = " + temp_path.strip() + "\n")
+        except:
+            # Non ascii - characters found
+            tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
+        
         new_config.write("external_video = " + str(external_video) + "\n")
         new_config.write("edge_marker = " + str(edge_marker) + "\n")
         new_config.write("external_guidelines = " + str(external_guidelines) + "\n")
+        new_config.write("userejected = " + str(userejected) + "\n")
         new_config.close()
 
         return True
@@ -2449,7 +2461,7 @@ class BinViewer(Frame):
         minimum_frames: the smallest number of detections for showing the meteor
         """
         minimum_frames = int(self.minimum_frames.get())
-
+        
         def get_frames(frame_list):
             """Gets frames for given FF*.bin file in FTPdetectinfo.
             """
@@ -2469,6 +2481,11 @@ class BinViewer(Frame):
                 str_ff_bin_list.append(line[0] + " Fr " + str(line[1][0]).zfill(3) + " - " + str(line[1][1]).zfill(3))
 
             return str_ff_bin_list
+
+        if self.current_image is not None:
+            self.station_id = self.current_image.split('_')[1]
+
+        print('in get_detected_list, station id is {}, current_image is'.format(self.station_id), self.current_image)
 
         ftpdetect_file = [line for line in os.listdir(self.dir_path) if ("FTPdetectinfo_" in line) and (".txt" in line) and ("original" not in line) and (self.station_id in line)]
         if len(ftpdetect_file) == 0:
@@ -2776,7 +2793,9 @@ class BinViewer(Frame):
         mkdir_p(confirmationDirectory)
 
         rejectionDirectory = os.path.join(up2Dir, rejectionDirectoryName, nightDir)
-        mkdir_p(rejectionDirectory)
+        if self.userejected.get() == 1:
+            print('userejected is {}'.format(self.userejected.get()))
+            mkdir_p(rejectionDirectory)
 
         image_list = []
         ftp_detect_list = []
@@ -3218,7 +3237,7 @@ class BinViewer(Frame):
                     print('unable to write CAMS file')
 
         # Copy rejected images and original ftpdetectinfo
-        if len(rejected_files):
+        if len(rejected_files) and self.userejected.get() == 1:
             self.timestamp_label.configure(text = "Copying rejected files...")
             dir_contents = os.listdir(self.dir_path)
             for ff_bin in rejected_files:
@@ -3422,6 +3441,8 @@ class BinViewer(Frame):
         self.confirmationMenu.add_checkbutton(label = "External video - 1:1.5 size", onvalue = 2, variable = self.externalVideoOn, command = self.update_layout)
         self.confirmationMenu.add_checkbutton(label = "External video - 1:2 size", onvalue = 3, variable = self.externalVideoOn, command = self.update_layout)
         self.confirmationMenu.add_checkbutton(label = "External video - 1:4 size", onvalue = 4, variable = self.externalVideoOn, command = self.update_layout)
+        self.confirmationMenu.add_separator()
+        self.confirmationMenu.add_checkbutton(label = "Use RejectedFiles Folder", onvalue = 1, variable = self.userejected, command = self.update_layout)
         self.menuBar.add_cascade(label = "Confirmation", underline = 0, menu = self.confirmationMenu)
 
         # Process Menu
