@@ -3307,9 +3307,12 @@ class BinViewer(Frame):
         self.update_image(0)
 
     def show_about(self):
-        tkMessageBox.showinfo("About",
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'changelog.md'), 'r') as inf:
+            details = inf.readlines()
+        
+        aboutBox("About",
             """CMN_binViewer version: """ + str(version) + """
-    Fixed small bugs in confirmation process\n
+    
         Croatian Meteor Network
         http://cmn.rgn.hr/
         Copyright © 2016 Denis Vida
@@ -3317,8 +3320,8 @@ class BinViewer(Frame):
     Reading FF*.bin files: based on Matlab scripts 
     by Peter S. Gural
     gifsicle: Copyright © 1997-2013 Eddie Kohler
-    Miscellaneous improvements: Mark McIntyre, 2020-21
-    """)
+    Miscellaneous improvements: Mark McIntyre, 2020+
+    """, ''.join(details))
 
     def show_key_bindings(self):
         tkMessageBox.showinfo("Key bindings",
@@ -3799,6 +3802,51 @@ def quitBinviewer():
     """ Cleanly exits binviewer. """
     root.quit()
     root.destroy()
+
+
+class aboutBox(tk.Toplevel):
+    def __init__(self, title, message, detail):
+        tk.Toplevel.__init__(self)
+        self.details_expanded = False
+        self.title(title)
+        self.geometry('300x250')
+        self.minsize(300, 250)
+        self.maxsize(500, 550)
+        self.rowconfigure(0, weight=0)
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
+
+        button_frame = tk.Frame(self)
+        button_frame.grid(row=0, column=0, sticky='nsew')
+        button_frame.columnconfigure(0, weight=1)
+        button_frame.columnconfigure(1, weight=1)
+
+        text_frame = tk.Frame(self)
+        text_frame.grid(row=1, column=0, padx=(7, 7), pady=(7, 7), sticky='nsew')
+        text_frame.rowconfigure(0, weight=1)
+        text_frame.columnconfigure(0, weight=1)
+
+        tk.ttk.Label(button_frame, text=message).grid(row=0, column=0, columnspan=2, pady=(7, 7))
+        tk.ttk.Button(button_frame, text='OK', command=self.destroy).grid(row=1, column=0, sticky='e')
+        tk.ttk.Button(button_frame, text='Changelog', command=self.toggle_details).grid(row=1, column=1, sticky='w')
+
+        self.textbox = tk.Text(text_frame, height=6)
+        self.textbox.insert('1.0', detail)
+        self.textbox.config(state='disabled')
+        self.scrollb = tk.Scrollbar(text_frame, command=self.textbox.yview)
+        self.textbox.config(yscrollcommand=self.scrollb.set)
+
+    def toggle_details(self):
+        if self.details_expanded:
+            self.textbox.grid_forget()
+            self.scrollb.grid_forget()
+            self.geometry('300x250')
+            self.details_expanded = False
+        else:
+            self.textbox.grid(row=0, column=0, sticky='nsew')
+            self.scrollb.grid(row=0, column=1, sticky='nsew')
+            self.geometry('500x550')
+            self.details_expanded = True
 
 
 if __name__ == '__main__':
