@@ -3826,9 +3826,9 @@ class aboutBox(tk.Toplevel):
         text_frame.rowconfigure(0, weight=1)
         text_frame.columnconfigure(0, weight=1)
 
-        tk.ttk.Label(button_frame, text=message).grid(row=0, column=0, columnspan=2, pady=(7, 7))
-        tk.ttk.Button(button_frame, text='OK', command=self.destroy).grid(row=1, column=0, sticky='e')
-        tk.ttk.Button(button_frame, text='Changelog', command=self.toggle_details).grid(row=1, column=1, sticky='w')
+        Label(button_frame, text=message).grid(row=0, column=0, columnspan=2, pady=(7, 7))
+        Button(button_frame, text='OK', command=self.destroy).grid(row=1, column=0, sticky='e')
+        Button(button_frame, text='Changelog', command=self.toggle_details).grid(row=1, column=1, sticky='w')
 
         self.textbox = tk.Text(text_frame, height=6)
         self.textbox.insert('1.0', detail)
