@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.31
+version = 3.32
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -1058,15 +1058,16 @@ class BinViewer(Frame):
                 new_path.append(line)
 
             temp_path = (os.sep).join(new_path)
-
-            # Write config parameters to config.ini, but check for non-ascii characters in the directory path
-            try:
-                new_config.write("dir_path = " + temp_path.strip() + "\n")
-            except:
-                # Non ascii - characters found
-                tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
-                sys.exit(0)
-
+        else:
+            temp_path = self.dir_path
+        
+        # Write config parameters to config.ini, but check for non-ascii characters in the directory path
+        try:
+            new_config.write("dir_path = " + temp_path.strip() + "\n")
+        except:
+            # Non ascii - characters found
+            tkMessageBox.showerror("Encoding error", "Make sure you don't have any non-ASCII characters in the path to your files. Provided path was:\n" + self.dir_path)
+        
         new_config.write("external_video = " + str(external_video) + "\n")
         new_config.write("edge_marker = " + str(edge_marker) + "\n")
         new_config.write("external_guidelines = " + str(external_guidelines) + "\n")
@@ -2460,7 +2461,7 @@ class BinViewer(Frame):
         minimum_frames: the smallest number of detections for showing the meteor
         """
         minimum_frames = int(self.minimum_frames.get())
-
+        
         def get_frames(frame_list):
             """Gets frames for given FF*.bin file in FTPdetectinfo.
             """
@@ -2480,6 +2481,11 @@ class BinViewer(Frame):
                 str_ff_bin_list.append(line[0] + " Fr " + str(line[1][0]).zfill(3) + " - " + str(line[1][1]).zfill(3))
 
             return str_ff_bin_list
+
+        if self.current_image is not None:
+            self.station_id = self.current_image.split('_')[1]
+
+        print('in get_detected_list, station id is {}, current_image is'.format(self.station_id), self.current_image)
 
         ftpdetect_file = [line for line in os.listdir(self.dir_path) if ("FTPdetectinfo_" in line) and (".txt" in line) and ("original" not in line) and (self.station_id in line)]
         if len(ftpdetect_file) == 0:
@@ -3301,9 +3307,12 @@ class BinViewer(Frame):
         self.update_image(0)
 
     def show_about(self):
-        tkMessageBox.showinfo("About",
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'changelog.md'), 'r') as inf:
+            details = inf.readlines()
+        
+        aboutBox("About",
             """CMN_binViewer version: """ + str(version) + """
-    Fixed small bugs in confirmation process\n
+    
         Croatian Meteor Network
         http://cmn.rgn.hr/
         Copyright © 2016 Denis Vida
@@ -3311,8 +3320,8 @@ class BinViewer(Frame):
     Reading FF*.bin files: based on Matlab scripts 
     by Peter S. Gural
     gifsicle: Copyright © 1997-2013 Eddie Kohler
-    Miscellaneous improvements: Mark McIntyre, 2020-21
-    """)
+    Miscellaneous improvements: Mark McIntyre, 2020+
+    """, ''.join(details))
 
     def show_key_bindings(self):
         tkMessageBox.showinfo("Key bindings",
@@ -3793,6 +3802,51 @@ def quitBinviewer():
     """ Cleanly exits binviewer. """
     root.quit()
     root.destroy()
+
+
+class aboutBox(tk.Toplevel):
+    def __init__(self, title, message, detail):
+        tk.Toplevel.__init__(self)
+        self.details_expanded = False
+        self.title(title)
+        self.geometry('300x250')
+        self.minsize(300, 250)
+        self.maxsize(500, 550)
+        self.rowconfigure(0, weight=0)
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
+
+        button_frame = tk.Frame(self)
+        button_frame.grid(row=0, column=0, sticky='nsew')
+        button_frame.columnconfigure(0, weight=1)
+        button_frame.columnconfigure(1, weight=1)
+
+        text_frame = tk.Frame(self)
+        text_frame.grid(row=1, column=0, padx=(7, 7), pady=(7, 7), sticky='nsew')
+        text_frame.rowconfigure(0, weight=1)
+        text_frame.columnconfigure(0, weight=1)
+
+        Label(button_frame, text=message).grid(row=0, column=0, columnspan=2, pady=(7, 7))
+        Button(button_frame, text='OK', command=self.destroy).grid(row=1, column=0, sticky='e')
+        Button(button_frame, text='Changelog', command=self.toggle_details).grid(row=1, column=1, sticky='w')
+
+        self.textbox = tk.Text(text_frame, height=6)
+        self.textbox.insert('1.0', detail)
+        self.textbox.config(state='disabled')
+        self.scrollb = tk.Scrollbar(text_frame, command=self.textbox.yview)
+        self.textbox.config(yscrollcommand=self.scrollb.set)
+
+    def toggle_details(self):
+        if self.details_expanded:
+            self.textbox.grid_forget()
+            self.scrollb.grid_forget()
+            self.geometry('300x250')
+            self.details_expanded = False
+        else:
+            self.textbox.grid(row=0, column=0, sticky='nsew')
+            self.scrollb.grid(row=0, column=1, sticky='nsew')
+            self.geometry('500x550')
+            self.details_expanded = True
 
 
 if __name__ == '__main__':
