@@ -1,6 +1,9 @@
 CMN Binviewer Change Log
 ========================
 
+3.33
+Oct 2021: fix black-button bug on Pi
+
 3.32    
 Sep 2021: Add menu option to enable/disable collection of 
 RejectedFiles.
