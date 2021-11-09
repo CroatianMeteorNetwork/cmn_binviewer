@@ -13,13 +13,12 @@ CMN_binViewer came into existence during the second part of August 2014, as a re
 
 **Installing Windows EXE**
 
-Note: the installer will remove any existing version firs. This is to avoid unexpected DLL errors 
+Note: the installer will remove any existing version first. This is to avoid unexpected DLL errors 
 due to updates in python or windows DLLs. 
 
-Latest Windows x64 build (recommended): https://www.dropbox.com/s/4eutahlxojrkvsa/CMN_binViewer-setup64.exe?dl=0
+Latest Windows builds: https://github.com/CroatianMeteorNetwork/cmn_binviewer/releases
 
-Latest Windows x86 build (legacy): https://www.dropbox.com/s/o6jn1ecsl7trdxk/CMN_binViewer-setup32.exe?dl=0
-
+Note that the 32-bit Windows package is legacy and unmaintained.
 
 ## Installing on Raspberry Pi
 

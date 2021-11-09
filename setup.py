@@ -4,7 +4,7 @@ from cx_Freeze import setup, Executable
 # Dependencies are automatically detected, but it might need fine tuning.
 includefiles = ['gifsicle.exe', 'noimage.bin', 'config.ini', 'icon.ico', 'changelog.md']
 
-exclude_libs = ['_ssl', 'pyreadline', 'doctest','optparse', 'matplotlib', "BaseHTTPServer", "SocketServer", "dateutil", "httplib", "itertools", "mpl_toolkits", "numpy.f2py", "pydoc_data", "urllib2", "zipimport", "scipy.sparse.linalg.eigen.arpack", "scipy.sparse._sparsetools", 'scipy']
+exclude_libs = ['pyreadline', 'doctest','optparse', 'matplotlib', "BaseHTTPServer", "SocketServer", "dateutil", "httplib", "itertools", "mpl_toolkits", "numpy.f2py", "pydoc_data", "urllib2", "zipimport", "scipy.sparse.linalg.eigen.arpack", "scipy.sparse._sparsetools", 'scipy']
 
 build_exe_options = {"packages": ["numpy.core", "numpy.lib"], "optimize": 0, 'include_files':includefiles, "excludes":exclude_libs, "include_msvcr":True}
 
