@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.32
+version = 3.34
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -3375,8 +3375,8 @@ class BinViewer(Frame):
 
         # Configure the style of each element
         s = Style()
-        s.configure("TButton", padding=(0, 5, 0, 5), font='serif 10', background = global_bg)
-        s.configure('TLabelframe.Label', foreground =global_fg, background=global_bg)
+        s.configure("TButton", padding=(0, 5, 0, 5), font='serif 10') 
+        s.configure('TLabelframe.Label', foreground=global_fg, background=global_bg)
         s.configure('TLabelframe', foreground =global_fg, background=global_bg, padding=(3, 3, 3, 3))
         s.configure("TRadiobutton", foreground = global_fg, background = global_bg)
         s.configure("TLabel", foreground = global_fg, background = global_bg)
