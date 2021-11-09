@@ -785,7 +785,7 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
 
 
 
-def get_processed_frames(ff_bin, save_path = '.'+os.sep, data_type=1, Flat_frame=None, Flat_frame_scalar=None, dark_frame=None, start_frame=0, end_frame=255, logsort_export=False, no_background=False):
+def get_processed_frames(ff_bin, save_path = '.', data_type=1, Flat_frame=None, Flat_frame_scalar=None, dark_frame=None, start_frame=0, end_frame=255, logsort_export=False, no_background=False):
     """ Makes calibrated BMPs of a particular detection. Used for fireball processing.
 
     ff_bin: *.bin file (or Skypatrol BMP) name and path
@@ -825,7 +825,7 @@ def get_processed_frames(ff_bin, save_path = '.'+os.sep, data_type=1, Flat_frame
         #else:
         img_name_prefix = ff_bin_name.split('.')[0]+"_frame_"+str(nframe).zfill(4)
 
-        img_path_prefix = save_path+img_name_prefix
+        img_path_prefix = os.path.join(save_path, img_name_prefix)
 
         # CAMS data type
         if (data_type == 1) or (data_type == 3):
@@ -855,7 +855,7 @@ def get_processed_frames(ff_bin, save_path = '.'+os.sep, data_type=1, Flat_frame
 
     # Make stack of frames on Skypatrol data
     if data_type == 2:
-        saveImage(skypatrol_stacked_image, save_path+ff_bin_name+'_stacked.bmp', print_name = False, bmp_24bit = logsort_export)
+        saveImage(skypatrol_stacked_image, os.path.join(save_path, ff_bin_name+'_stacked.bmp'), print_name = False, bmp_24bit = logsort_export)
 
     return image_list
 
@@ -1539,7 +1539,7 @@ def cropDetectionSegments(ffBinRead, segmentList, cropSize = 64):
     #saveImage(colorized_frame, img_name+'_colorized.bmp', print_name = False)
 
 
-    #### REGARDING FLATFIELDING AND LIGHTCURVE MAKING:
+    # REGARDING FLATFIELDING AND LIGHTCURVE MAKING:
 
     #flat_dir = "C:\\Users\\Admin\\Desktop\\PER_GIF_making\\PUA_2014081213-Processed\\"
     #flat_dir = "C:\\Users\\Admin\\Desktop\\PER_GIF_making\\PUA_flat\\"
