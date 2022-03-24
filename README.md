@@ -86,6 +86,26 @@ conda activate binviewer
 python CMN_binViewer.py
 ```
 
+## Installing on Fedora Linux
+
+Tested on Fedora Linux 35.
+Run in terminal:
+
+```
+sudo dnf install 'python3dist(astropy)' python3-pillow-tk 'python3dist(six)' 'python3dist(scipy)' 'python3dist(imageio)'
+```
+
+Then clone this repository:
+```
+git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
+```
+
+Then run the application :
+```
+cd cmn_binviewer
+python3 CMN_binViewer.py
+```
+
 ## Build scripts
 
 Build scripts are provided for building a Windows exe - setup.py and COMPILE_from_setup.bat. 
