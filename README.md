@@ -26,7 +26,7 @@ Run in terminal:
 
 ```
 sudo apt-get update 
-sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev  libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev
+sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev  libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev
 ```
 
 Then clone this repository:
@@ -106,14 +106,7 @@ If you are getting weird "Exception code is 0xc0000005 (access violation)" error
 
 **Troubleshooting (Ubuntu/Debian)**
 
-1. ImportError: No module named wx:
-
-Run:
-```
-sudo apt-get install python-wxgtk3.0
-```
-
-2. ImportError: cannot import name ImageTk:
+1. ImportError: cannot import name ImageTk:
 
 Run:
 ```
