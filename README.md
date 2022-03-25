@@ -26,7 +26,7 @@ Run in terminal:
 
 ```
 sudo apt-get update 
-sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev  libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev
+sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev  libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev python-tk
 ```
 
 Then clone this repository:
@@ -140,6 +140,7 @@ Many thanks to:
 - **Damir Šegon** for support and suggestions 
 - **Paul Roggermans** for thorough testing and objective criticism 
 - **Peter S. Gural** for technical support
+- **Mark McIntyre** for ongoing development
 
 These are people without whom this software wouldn't be as half as good as it is today.
 
