@@ -4,7 +4,6 @@
 astropy
 numpy
 pillow
-# wxPython
 tk
 six
 scipy

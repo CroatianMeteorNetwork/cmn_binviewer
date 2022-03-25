@@ -28,11 +28,7 @@ import platform
 import six
 
 import numpy as np
-
-try:
-    import pyfits
-except:
-    import astropy.io.fits as pyfits
+import astropy.io.fits as pyfits
 
 from PIL import Image as img
 from PIL import ImageFont
