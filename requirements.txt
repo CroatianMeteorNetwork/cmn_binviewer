@@ -4,7 +4,6 @@
 astropy
 numpy
 pillow
-tk
 six
 scipy
 cx_Freeze>=6 ; python_version >= "3.0" and sys_platform == "win32"
