@@ -26,7 +26,7 @@ Run in terminal:
 
 ```
 sudo apt-get update 
-sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev  libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev
+sudo apt-get install dpkg-dev build-essential libjpeg-dev libtiff-dev libsdl1.2-dev  libgstreamer-plugins-base0.10-dev libnotify-dev freeglut3 freeglut3-dev libwebkitgtk-dev libghc-gtk3-dev
 ```
 
 Then clone this repository:
@@ -86,6 +86,26 @@ conda activate binviewer
 python CMN_binViewer.py
 ```
 
+## Installing on Fedora Linux
+
+Tested on Fedora Linux 35.
+Run in terminal:
+
+```
+sudo dnf install 'python3dist(astropy)' python3-pillow-tk 'python3dist(six)' 'python3dist(scipy)' 'python3dist(imageio)'
+```
+
+Then clone this repository:
+```
+git clone https://github.com/CroatianMeteorNetwork/cmn_binviewer.git
+```
+
+Then run the application :
+```
+cd cmn_binviewer
+python3 CMN_binViewer.py
+```
+
 ## Build scripts
 
 Build scripts are provided for building a Windows exe - setup.py and COMPILE_from_setup.bat. 
@@ -106,14 +126,7 @@ If you are getting weird "Exception code is 0xc0000005 (access violation)" error
 
 **Troubleshooting (Ubuntu/Debian)**
 
-1. ImportError: No module named wx:
-
-Run:
-```
-sudo apt-get install python-wxgtk3.0
-```
-
-2. ImportError: cannot import name ImageTk:
+1. ImportError: cannot import name ImageTk:
 
 Run:
 ```
