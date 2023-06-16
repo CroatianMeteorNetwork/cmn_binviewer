@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.34
+version = 3.35
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -772,6 +772,10 @@ class BinViewer(Frame):
 
         # Fast image change flag
         self.fast_img_change = False
+
+        # shower info, when available
+        self.meteor_info = []
+        self.current_img_timestamp = None
 
 
         # Misc
@@ -1525,7 +1529,7 @@ class BinViewer(Frame):
         self.update_image(0)
 
     def update_current_image(self):
-        """ Updates 2 varibales for tracking the current image, without changing the screen. Used for confirmation.
+        """ Updates 2 variables for tracking the current image, without changing the screen. Used for confirmation.
         """
 
         self.block_img_update = True
@@ -2096,10 +2100,35 @@ class BinViewer(Frame):
         #self.fps_label.configure(text = str(status))
 
 
+    def getAssocAndMag(self, timestamp=None, force_update=False):
+        if self.dir_path is None:
+            return None, None
+        if self.meteor_info == [] or force_update is True:
+            self.meteor_info = []
+            rad_file = os.path.join(self.dir_path, os.path.split(self.dir_path)[1]+ '_radiants.txt')
+            if os.path.isfile(rad_file):
+                lis = open(rad_file).readlines()
+                for li in lis:
+                    if li[0] != '#':
+                        vals = li.strip().split(',')
+                        beg_dt = datetime.datetime.strptime(vals[0][:21], '%Y%m%d %H:%M:%S.%f') 
+                        shower = vals[3].strip()
+                        mag = vals[-1].strip()
+                        self.meteor_info.append([beg_dt, shower, mag])
+        if timestamp is None:
+            return None, None
+        else:
+            dtval = datetime.datetime.strptime(timestamp.strip(), '%Y-%m-%d %H:%M:%S.%f')
+            for rw in self.meteor_info:
+                if rw[0] >= dtval:
+                    return rw[1], rw[2]
+            return None, None
+
+
+
     def set_timestamp(self, fps = None, image_name = None):
         """ Sets timestamp with given parameters.
         """
-
         timestampLock = threading.RLock()
         timestampLock.acquire()
         if fps is None:
@@ -2145,9 +2174,15 @@ class BinViewer(Frame):
         else:
             # timestamp = "YYYY-MM-DD HH:MM.SS.mms  FFF"
             timestamp = "YYYY-MM-DD HH:MM.SS.mms"
+        self.current_img_timestamp = timestamp
+        extra_data = ''
+        if self.mode.get() == 2 or self.mode.get() == 3:
+            shwr, mag = self.getAssocAndMag(timestamp)
+            if shwr is not None: 
+                extra_data = 'Shwr: {} Mag {}'.format(shwr, mag)
 
         # Change the timestamp label
-        self.timestamp_label.configure(text = timestamp)
+        self.timestamp_label.configure(text = timestamp + extra_data)
         timestampLock.release()
 
     def wxDirchoose(self, initialdir, title, _selectedDir = '.'):
@@ -2207,6 +2242,8 @@ class BinViewer(Frame):
 
         self.move_top(0)  # Move listbox cursor to the top
 
+        self.getAssocAndMag(force_update = True) # read the shower association details if available
+
         self.write_config()
 
     def get_bin_list(self):
@@ -2237,8 +2274,9 @@ class BinViewer(Frame):
             img_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save as...", initialfile = img_name, defaultextension = "." + extension)
             if img_path == '':
                 return 0
-
-        saveImage(self.img_data, img_path, self.print_name_status.get())
+        shwr, mag = self.getAssocAndMag(timestamp = self.current_img_timestamp)
+        extra_text = '\n  Shower: {}  Mag {}'.format(shwr, mag)
+        saveImage(self.img_data, img_path, self.print_name_status.get(), extra_text = extra_text)
 
         self.status_bar.config(text = "Image saved: " + img_name)
 
@@ -2484,8 +2522,6 @@ class BinViewer(Frame):
 
         if self.current_image is not None:
             self.station_id = self.current_image.split('_')[1]
-
-        print('in get_detected_list, station id is {}, current_image is'.format(self.station_id), self.current_image)
 
         ftpdetect_file = [line for line in os.listdir(self.dir_path) if ("FTPdetectinfo_" in line) and (".txt" in line) and ("original" not in line) and (self.station_id in line)]
         if len(ftpdetect_file) == 0:
