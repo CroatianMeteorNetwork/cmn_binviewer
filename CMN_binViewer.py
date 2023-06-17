@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.34
+version = 3.35
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -772,6 +772,10 @@ class BinViewer(Frame):
 
         # Fast image change flag
         self.fast_img_change = False
+
+        # shower info, when available
+        self.meteor_info = []
+        self.current_img_timestamp = None
 
 
         # Misc
@@ -1525,7 +1529,7 @@ class BinViewer(Frame):
         self.update_image(0)
 
     def update_current_image(self):
-        """ Updates 2 varibales for tracking the current image, without changing the screen. Used for confirmation.
+        """ Updates 2 variables for tracking the current image, without changing the screen. Used for confirmation.
         """
 
         self.block_img_update = True
@@ -1776,11 +1780,16 @@ class BinViewer(Frame):
         if (self.current_image != self.old_image) and self.filter.get() == 10:
             self.filter.set(1)
 
-        img_path = os.path.join(self.dir_path, self.current_image)
-
+        curr_image = self.current_image
+        if ' Fr' in curr_image:
+            curr_image = curr_image.split(' ')[0]
+        img_path = os.path.join(self.dir_path, curr_image)
         if not os.path.isfile(img_path):
-            tkMessageBox.showerror("File error", "File not found:\n" + img_path)
-            return 0
+            # try looking in the CapturedFiles folder
+            img_path = os.path.join(self.dir_path.replace('ArchivedFiles','CapturedFiles'), curr_image)
+            if not os.path.isfile(img_path):
+                tkMessageBox.showerror("File error", "File not found:\n" + img_path)
+                return 0
 
         dark_frame = None
         flat_frame = None
@@ -1836,6 +1845,9 @@ class BinViewer(Frame):
 
             else:
                 self.frame_scale.config(state = DISABLED)
+
+        if self.mode.get() == 4:
+            img_array = process_array(readFF(img_path).maxpixel, flat_frame, flat_frame_scalar, dark_frame, self.deinterlace.get())
 
         # Apply individual filters
         if self.filter.get() == 1:  # Maxpixel
@@ -2095,11 +2107,47 @@ class BinViewer(Frame):
         self.set_timestamp(temp_frame, image_name=img_name)
         #self.fps_label.configure(text = str(status))
 
+    
+    def get_ML_reject_list(self, full_list, str_full_list):
+        filt_list, _ = self.get_detected_list()
+        rejects = []
+        strrej = []
+        for itm, stritem in zip(full_list, str_full_list):
+            if itm not in filt_list:
+                #print(itm)
+                rejects.append(itm)
+                strrej.append(stritem)
+        return rejects, strrej
+
+
+    def get_assoc_and_mag(self, timestamp=None, force_update=False):
+        if self.dir_path is None:
+            return None, None
+        if self.meteor_info == [] or force_update is True:
+            self.meteor_info = []
+            rad_file = os.path.join(self.dir_path, os.path.split(self.dir_path)[1]+ '_radiants.txt')
+            if os.path.isfile(rad_file):
+                lis = open(rad_file).readlines()
+                for li in lis:
+                    if li[0] != '#':
+                        vals = li.strip().split(',')
+                        beg_dt = datetime.datetime.strptime(vals[0][:21], '%Y%m%d %H:%M:%S.%f') 
+                        shower = vals[3].strip()
+                        mag = vals[-1].strip()
+                        self.meteor_info.append([beg_dt, shower, mag])
+        if timestamp is None:
+            return None, None
+        else:
+            dtval = datetime.datetime.strptime(timestamp.strip(), '%Y-%m-%d %H:%M:%S.%f')
+            for rw in self.meteor_info:
+                if rw[0] >= dtval:
+                    return rw[1], rw[2]
+            return None, None
+
 
     def set_timestamp(self, fps = None, image_name = None):
         """ Sets timestamp with given parameters.
         """
-
         timestampLock = threading.RLock()
         timestampLock.acquire()
         if fps is None:
@@ -2115,6 +2163,9 @@ class BinViewer(Frame):
             current_image = self.current_image
 
         # Check if the given file has a standard file name
+        print(current_image)
+        if ' Fr' in current_image:
+            current_image = current_image.split(' ')[0]
         correct_status, format_type = self.correct_datafile_name(current_image)
 
         # Extract the proper timestamp for the given data format
@@ -2145,9 +2196,15 @@ class BinViewer(Frame):
         else:
             # timestamp = "YYYY-MM-DD HH:MM.SS.mms  FFF"
             timestamp = "YYYY-MM-DD HH:MM.SS.mms"
+        self.current_img_timestamp = timestamp
+        extra_data = ''
+        if self.mode.get() == 2 or self.mode.get() == 3:
+            shwr, mag = self.get_assoc_and_mag(timestamp)
+            if shwr is not None: 
+                extra_data = 'Shwr: {} Mag {}'.format(shwr, mag)
 
         # Change the timestamp label
-        self.timestamp_label.configure(text = timestamp)
+        self.timestamp_label.configure(text = timestamp + extra_data)
         timestampLock.release()
 
     def wxDirchoose(self, initialdir, title, _selectedDir = '.'):
@@ -2207,6 +2264,8 @@ class BinViewer(Frame):
 
         self.move_top(0)  # Move listbox cursor to the top
 
+        self.get_assoc_and_mag(force_update = True) # read the shower association details if available
+
         self.write_config()
 
     def get_bin_list(self):
@@ -2237,8 +2296,11 @@ class BinViewer(Frame):
             img_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save as...", initialfile = img_name, defaultextension = "." + extension)
             if img_path == '':
                 return 0
-
-        saveImage(self.img_data, img_path, self.print_name_status.get())
+        shwr, mag = self.get_assoc_and_mag(timestamp = self.current_img_timestamp)
+        extra_text = ''
+        if shwr is not None:
+            extra_text = '\n  Shower: {}  Mag {}'.format(shwr, mag)
+        saveImage(self.img_data, img_path, self.print_name_status.get(), extra_text = extra_text)
 
         self.status_bar.config(text = "Image saved: " + img_name)
 
@@ -2455,7 +2517,7 @@ class BinViewer(Frame):
         # Write FPS to config file
         self.write_config()
 
-    def get_detected_list(self, minimum_frames = 0):
+    def get_detected_list(self, minimum_frames = 0, check_rejected=False):
         """ Gets a list of FF_bin files from the FTPdetectinfo with a list of frames. Used for composing the image while in DETECT mode.
 
         minimum_frames: the smallest number of detections for showing the meteor
@@ -2482,16 +2544,22 @@ class BinViewer(Frame):
 
             return str_ff_bin_list
 
-        if self.current_image is not None:
+        if self.current_image is not None and self.current_image != '':
             self.station_id = self.current_image.split('_')[1]
-
-        print('in get_detected_list, station id is {}, current_image is'.format(self.station_id), self.current_image)
+        else:
+            self.station_id = (os.path.split(self.dir_path)[1]).split('_')[0]
 
         ftpdetect_file = [line for line in os.listdir(self.dir_path) if ("FTPdetectinfo_" in line) and (".txt" in line) and ("original" not in line) and (self.station_id in line)]
         if len(ftpdetect_file) == 0:
             tkMessageBox.showerror("FTPdetectinfo error", "FTPdetectinfo file not found!")
             return False
-        ftpdetect_file = ftpdetect_file[0]
+        if check_rejected is False:
+            ftpdetect_file = ftpdetect_file[0]
+        else:
+            ftpdetect_file = [line for line in ftpdetect_file if 'unfiltered' in line]
+            if len(ftpdetect_file) == 0:
+                return False
+            ftpdetect_file = ftpdetect_file[0]
         try:
             FTPdetect_file_content = open(os.path.join(self.dir_path, ftpdetect_file), 'r').readlines()
         except:
@@ -2535,7 +2603,11 @@ class BinViewer(Frame):
             get_frames(frame_list)
 
         # Converts list to a list of strings and returns it
-        return ff_bin_list, convert2str(ff_bin_list)
+        str_bin_list = convert2str(ff_bin_list)
+
+        if check_rejected is True:
+            ff_bin_list, str_bin_list = self.get_ML_reject_list(ff_bin_list, str_bin_list)
+        return ff_bin_list, str_bin_list
 
     def get_logsort_list(self, logsort_name = "LOG_SORT.INF", minimum_frames = 0):
         """ Gets a list of BMP files from the LOG_SORT.INF with a list of frames. Used for composing the image while in DETECT mode.
@@ -2681,24 +2753,32 @@ class BinViewer(Frame):
                 self.end_frame.set(1500)
                 self.frame_scale.config(to = 1500)
 
-        elif self.mode.get() == 2:
+        elif self.mode.get() == 2 or self.mode.get() == 4:
 
-            # Detected mode
+            # Detected mode or Rejected mode
+            rej_or_det = 'detections'
             if (self.data_type.get() == 1) or (self.data_type.get() == 3):
                 # CAMS data type
 
                 # Get a list of FF*.bin files from FTPdetectinfo
-                detected_list = self.get_detected_list()
+                if self.mode.get() == 2:
+                    detected_list = self.get_detected_list()
+                else:
+                    rej_or_det = 'rejections'
+                    detected_list = self.get_detected_list(check_rejected=True)
             else:
                 # Skypatrol data type
                 detected_list = self.get_logsort_list()
 
             if detected_list is False:
+                tkMessageBox.showinfo("FTPdetectinfo info", "No {} in the FTPdetectinfo file!".format(rej_or_det))
                 self.mode.set(1)
+                self.change_mode()
                 return 0
             elif not detected_list:
-                tkMessageBox.showinfo("FTPdetectinfo info", "No detections in the FTPdetectinfo file!")
+                tkMessageBox.showinfo("FTPdetectinfo info", "No {} in the FTPdetectinfo file!".format(rej_or_det))
                 self.mode.set(1)
+                self.change_mode()
                 return 0
 
             # Enable the entry of minimum frame number
@@ -3489,9 +3569,11 @@ class BinViewer(Frame):
         self.captured_btn = Radiobutton(mode_panel, text="Captured", variable = self.mode, value = 1, command = self.change_mode)
         self.mode.set(1)
         self.detected_btn = Radiobutton(mode_panel, text="Detected", variable = self.mode, value = 2, command = self.change_mode)
+        self.rejected_btn = Radiobutton(mode_panel, text="Rejected", variable = self.mode, value = 4, command = self.change_mode)
 
         self.captured_btn.grid(row = 2, column = 0, padx=5, pady=2)
         self.detected_btn.grid(row = 2, column = 1, padx=5, pady=2)
+        self.rejected_btn.grid(row = 2, column = 2, padx=5, pady=2)
 
         min_frames_label = Label(mode_panel, text = "Min. frames (0 - 255): ")
         min_frames_label.grid(row = 3, column = 0)

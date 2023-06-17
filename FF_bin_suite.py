@@ -322,7 +322,7 @@ def add_text(ff_array, img_text):
 
 
 
-def saveImage(ff_array, img_name, print_name=True, bmp_24bit=False):
+def saveImage(ff_array, img_name, print_name=True, bmp_24bit=False, extra_text=None):
     """ Save image (choose format by writing extension, e.g. *.jpg or *.bmp) from numpy array with name on it if print_name is True (default).
 
     ff_array: numpy array, e.g. ff_array = buildFF(readFF("FF300_20140802_205545_600_0090624.bin"), 250)
@@ -333,7 +333,8 @@ def saveImage(ff_array, img_name, print_name=True, bmp_24bit=False):
     usage: saveImage(buildFF(readFF("FF300_20140802_205545_600_0090624.bin"), 250), 'test.jpg')
     """
     if print_name is True:
-        ff_array = add_text(ff_array, img_name)
+        text_to_add = os.path.basename(img_name) + extra_text
+        ff_array = add_text(ff_array, text_to_add)
 
     im = img.fromarray(np.uint8(ff_array))
 
