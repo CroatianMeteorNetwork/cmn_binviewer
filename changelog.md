@@ -1,5 +1,10 @@
 CMN Binviewer Change Log
 ========================
+3.35
+Jun 23: in detection or confirmation mode, show mag and shower if known, and include on saved images. 
+        Add new mode to display images filtered out by the ML. Requires the rejected FITS files to be in either
+        ArchivedFiles or CapturedFiles. 
+
 3.34 
 Nov 2021: save-frames was saving in parent of chosen folder
 
