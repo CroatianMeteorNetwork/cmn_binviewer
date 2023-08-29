@@ -70,7 +70,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = 3.351
+version = "3.35.1"
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -813,6 +813,9 @@ class BinViewer(Frame):
 
         parent.bind("<Return>", self.copy_bin_to_sorted)
 
+        parent.bind("C", self.callConfirmationStart)
+        parent.bind("R", self.showRadiantMap)
+
         # Update UI changes
         parent.update_idletasks()
         parent.update()
@@ -824,6 +827,29 @@ class BinViewer(Frame):
         # Run confirmation if the flag was given
         if confirmation:
             self.confirmationStart(ftpDetectFile=os.path.basename(ftpdetectfile))
+
+
+    def callConfirmationStart(self, dummy):
+        self.confirmationStart(ftpDetectFile='')
+
+
+    def showRadiantMap(self, dummy):
+        radmaps = glob.glob(os.path.join(self.dir_path, '*radiants.png'))
+        if len(radmaps) == 0:
+            return 
+        radmap = radmaps[0]
+        im = img.open(radmap)
+        resize_factor = int(self.image_resize_factor.get())
+        if resize_factor == 0:
+            resize_factor = 2
+        im = im.resize((int(1280/resize_factor), int(720/resize_factor)))
+        radimage = ImageTk.PhotoImage(im)
+        #self.imagelabel = Label(self, image = radimage)
+        self.imagelabel.configure(image = radimage)
+        self.imagelabel.image = radimage
+
+        log.info('Showing radiant map')
+        return 
 
     def updateUFOData(self, ftpdata, ufoData):
 
@@ -2163,7 +2189,7 @@ class BinViewer(Frame):
             current_image = self.current_image
 
         # Check if the given file has a standard file name
-        print(current_image)
+        #print(current_image)
         if ' Fr' in current_image:
             current_image = current_image.split(' ')[0]
         correct_status, format_type = self.correct_datafile_name(current_image)
@@ -2874,7 +2900,7 @@ class BinViewer(Frame):
 
         rejectionDirectory = os.path.join(up2Dir, rejectionDirectoryName, nightDir)
         if self.userejected.get() == 1:
-            print('userejected is {}'.format(self.userejected.get()))
+            log.info('userejected is {}'.format(self.userejected.get()))
             mkdir_p(rejectionDirectory)
 
         image_list = []
@@ -2928,7 +2954,8 @@ class BinViewer(Frame):
             tkMessageBox.showerror("FTPdetectinfo error", "No FTPdetectinfo file could be found in directory: " + self.dir_path)
             self.confirmationFinish()
             return 0
-
+        log.info(ftp_detect_list)
+        log.info(ftpDetectFile)
         self.ConfirmationInstance = Confirmation(image_list, os.path.join(self.dir_path, ftpDetectFile), confirmationDirectory, rejectionDirectory, minimum_frames = 0)
 
         # Cancel the confirmation if there are no detectins in the FTPdetectinfo file
@@ -3273,7 +3300,7 @@ class BinViewer(Frame):
                     for line in FTPdetectinfoExport:
                         newFTPdetectinfo.write(line)
             except Exception:
-                print('unable to write new FTPDetect file')
+                log.info('unable to write new FTPDetect file')
 
             # write filtered UFO-compatible R91 csv file 
             if sys.version_info[0] > 2:
@@ -3292,9 +3319,9 @@ class BinViewer(Frame):
                                 newUfoFile.write(line)
 
                     except OSError as error:
-                        print('unable to write CSV file, {}', error)
+                        log.info('unable to write CSV file, {}'.format(error))
                 except FileNotFoundError:
-                    print('CSV file not present')
+                    log.info('CSV file not present')
             else:
                 print('ufo filtering doesnt work on Python 2.7')
 
@@ -3314,7 +3341,7 @@ class BinViewer(Frame):
                         for line in CamsdetectinfoExport:
                             newFTPdetectinfo.write(line)
                 except Exception:
-                    print('unable to write CAMS file')
+                    log.info('unable to write CAMS file')
 
         # Copy rejected images and original ftpdetectinfo
         if len(rejected_files) and self.userejected.get() == 1:
@@ -3444,7 +3471,7 @@ class BinViewer(Frame):
         self.filter.set(1)
         self.update_image(0)
         time.sleep(0.25)
-        print('quitting')
+        log.info('quitting')
         quitBinviewer()
     
     def initUI(self):

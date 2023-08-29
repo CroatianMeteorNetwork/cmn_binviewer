@@ -7,7 +7,7 @@
 
 [Setup]
 AppName=CMN_binViewer
-AppVersion=3.351
+AppVersion="3.35.1"
 AppPublisher=Croatian Meteor Network
 AppPublisherURL=http://cmn.rgn.hr/
 DefaultDirName={commonpf}\CMN_binViewer
