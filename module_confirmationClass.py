@@ -214,7 +214,7 @@ class Confirmation:
 
         return ff_bin_list
 
-## TEST EXAMPLES OF USAGE
+# TEST EXAMPLES OF USAGE
 # temp_list = ["FF451_20140819_021619_203_0546048.bin", "FF451_20140819_020544_234_0530176.bin", "FF451_20140819_013114_640_0478464.bin"]
 
 # # Initialize confirmation instance
