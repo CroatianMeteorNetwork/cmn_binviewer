@@ -704,10 +704,10 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
         img_array = np.subtract(img_array, dark_frame)
 
     if Flat_frame is not None:
-        img_array = img_array.astype(np.float)
+        img_array = img_array.astype(float)
 
         Flat_frame[Flat_frame == 0] = 1
-        img_array = img_array / Flat_frame.astype(np.float)
+        img_array = img_array / Flat_frame.astype(float)
         img_array = np.multiply(img_array, Flat_frame_scalar)
 
     if (dark_frame is not None) or (Flat_frame is not None):
@@ -744,7 +744,7 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
 
 #     img_ave = readFF(ff_bin, datatype=data_type).avepixel
 
-#     img_ave = img_ave.astype(np.float)
+#     img_ave = img_ave.astype(float)
 
 #     img_ave = np.subtract(img_ave, dark_frame)
 
@@ -1348,7 +1348,7 @@ def adjust_levels(img_array, minv, gamma, maxv):
     _interval= maxv - minv
     _invgamma= 1.0/gamma
 
-    img_array = img_array.astype(np.float)
+    img_array = img_array.astype(float)
     img_array = img_array / 255 #Reduce array to 0-1 values
 
     img_array = ((img_array - minv)/_interval)**_invgamma #Calculate new levels
