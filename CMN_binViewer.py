@@ -3421,7 +3421,8 @@ class BinViewer(Frame):
         selected_file = tkFileDialog.askopenfilename(filetypes=filetypes, initialdir=log_directory, title="Select logfile")
         log.info(selected_file)
         if platform.system() == 'Windows':
-            os.system(selected_file)
+            import webbrowser # allows me to open the file in whatever's the default text-file editor
+            webbrowser.open(selected_file)
         else:
             from shutil import which
             if which('mousepad') is not None:
