@@ -1,7 +1,14 @@
 CMN Binviewer Change Log
 ========================
+3.36.0
+Sep 23: Hotkey "R" to display the radiant map if available. #47
+        Hotkey "C" to start confirmation. #57
+        Upgrade gifsicle to 1.94. #56
+        Bugfix in gif-generation. #56
+        Bugfix in review of rejected files. #55
+
 3.351
-Sep 23: bugfix for crash on Windows11 due to numpy float deprecation
+Aug 23: bugfix for crash on Windows11 due to numpy float deprecation
 
 3.35
 Jun 23: in detection or confirmation mode, show mag and shower if known, and include on saved images. 
