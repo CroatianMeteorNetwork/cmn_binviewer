@@ -3424,10 +3424,10 @@ class BinViewer(Frame):
             os.system(selected_file)
         else:
             from shutil import which
-            if which('nano') is not None:
-                os.system('nano ' + selected_file)
-            elif which('mousepad') is not None:
+            if which('mousepad') is not None:
                 os.system('mousepad ' + selected_file)
+            elif which('nano') is not None:
+                os.system('nano ' + selected_file)
             elif which('gedit') is not None:
                 os.system('gedit ' + selected_file)
             else:                
