@@ -3423,16 +3423,16 @@ class BinViewer(Frame):
         if platform.system() == 'Windows':
             os.system(selected_file)
         else:
-            try:
-                os.system('mousepads ' + selected_file)
-            except Exception:
-                try:
-                    os.system('nano ' + selected_file)
-                except Exception:
-                    try: 
-                        os.system('gedit  ' + selected_file)
-                    except Exception:
-                        log.info('unable to find suitable editor for the logfile')
+            from shutil import which
+            if which('nano') is not None:
+                os.system('nano ' + selected_file)
+            elif which('mousepad') is not None:
+                os.system('mousepad ' + selected_file)
+            elif which('gedit') is not None:
+                os.system('gedit ' + selected_file)
+            else:                
+                log.info('unable to find suitable editor for the logfile')
+                tkMessageBox.showinfo("View Logs", "Cant find a text editor!")                
         return 
 
     def show_about(self):
