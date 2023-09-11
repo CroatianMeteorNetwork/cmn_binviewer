@@ -3415,6 +3415,13 @@ class BinViewer(Frame):
 
         self.update_image(0)
 
+    def view_logs(self):
+        filetypes = (('text files', '*.txt'),('All files', '*.*'))
+        selected_file = tkFileDialog.askopenfilename(filetypes=filetypes, initialdir=log_directory, title="Select logfile")
+        log.info(selected_file)
+        os.system(selected_file)
+        return 
+
     def show_about(self):
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'changelog.md'), 'r') as inf:
             details = inf.readlines()
@@ -3590,6 +3597,7 @@ class BinViewer(Frame):
         # Help Menu
         helpMenu = Menu(self.menuBar, tearoff=0)
         helpMenu.add_command(label = "Key bindings", command = self.show_key_bindings)
+        helpMenu.add_command(label = "View Logs", command = self.view_logs)
         helpMenu.add_command(label = "About", command = self.show_about)
         self.menuBar.add_cascade(label = "Help", underline=0, menu=helpMenu)
 
@@ -4002,7 +4010,7 @@ if __name__ == '__main__':
     log = logging.getLogger("CMN_binViewer")
     log.setLevel(logging.INFO)
 
-    log_file = os.path.join(log_directory, log_timestamp() + '.log')
+    log_file = os.path.join(log_directory, log_timestamp() + '.txt')
     handler = logging.handlers.TimedRotatingFileHandler(log_file, when='D', interval=1)  # Log to a different file each day
     handler.setLevel(logging.INFO)
 
