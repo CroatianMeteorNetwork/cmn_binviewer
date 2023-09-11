@@ -1,5 +1,5 @@
 [bumpver]
-current_version = "3.35.1"
+current_version = "3.36.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 
 [bumpver.file_patterns]
