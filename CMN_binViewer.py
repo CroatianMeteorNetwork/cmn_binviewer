@@ -2136,6 +2136,8 @@ class BinViewer(Frame):
     
     def get_ML_reject_list(self, full_list, str_full_list):
         filt_list, _ = self.get_detected_list()
+        if filt_list is None:
+            return [], []
         rejects = []
         strrej = []
         for itm, stritem in zip(full_list, str_full_list):
@@ -2594,7 +2596,7 @@ class BinViewer(Frame):
 
         # Solving issue when no meteors are in the file
         if int(FTPdetect_file_content[0].split('=')[1]) == 0:
-            return []
+            return [],[]
 
         ff_bin_list = []
 
@@ -3439,6 +3441,10 @@ class BinViewer(Frame):
                 - Home - jump to first image
                 - End - jump to last image
 
+            Special Keys:
+                - R - load radiant map if available
+                - C - start confirmation process
+        
             Changing mode:
                 - Page Up - captured mode
                 - Page Down - detected mode
@@ -3993,7 +3999,7 @@ if __name__ == '__main__':
         log_directory = os.path.expanduser(os.path.join("~", "." + log_directory))
 
     mkdir_p(log_directory)
-    log = logging.getLogger(__name__)
+    log = logging.getLogger("CMN_binViewer")
     log.setLevel(logging.INFO)
 
     log_file = os.path.join(log_directory, log_timestamp() + '.log')
