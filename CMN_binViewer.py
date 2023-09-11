@@ -3421,7 +3421,7 @@ class BinViewer(Frame):
         selected_file = tkFileDialog.askopenfilename(filetypes=filetypes, initialdir=log_directory, title="Select logfile")
         log.info(selected_file)
         if platform.system() == 'Windows':
-            os.system(selected_file)
+            os.system('notepad ' + selected_file)
         else:
             from shutil import which
             if which('mousepad') is not None:
