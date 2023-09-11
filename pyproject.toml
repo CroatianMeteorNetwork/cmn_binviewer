@@ -1,0 +1,8 @@
+[bumpver]
+current_version = "3.36.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+
+[bumpver.file_patterns]
+"CMN_binViewer.py" = ['version = "{version}"',]
+"CMN_binViewer_setup.iss"= ['AppVersion="{version}"$',]
+"CMN_binViewer_setup_win32.iss"= ['AppVersion="{version}"$',]

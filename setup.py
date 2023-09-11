@@ -6,7 +6,7 @@ includefiles = ['gifsicle.exe', 'noimage.bin', 'config.ini', 'icon.ico', 'change
 
 exclude_libs = ['pyreadline', 'doctest','optparse', 'matplotlib', "BaseHTTPServer", "SocketServer", "dateutil", "httplib", "itertools", "mpl_toolkits", "numpy.f2py", "pydoc_data", "urllib2", "zipimport", "scipy.sparse.linalg.eigen.arpack", "scipy.sparse._sparsetools", 'scipy']
 
-build_exe_options = {"packages": ["numpy.core", "numpy.lib"], "optimize": 0, 'include_files':includefiles, "excludes":exclude_libs, "include_msvcr":True}
+build_exe_options = {"packages": ["numpy.core", "numpy.lib", "imageio.plugins"], "optimize": 0, 'include_files':includefiles, "excludes":exclude_libs, "include_msvcr":True}
 
 # GUI applications require a different base on Windows (the default is for a
 # console application).
@@ -20,5 +20,4 @@ setup(name = "CMN_binViewer",
         executables = [
             Executable("CMN_binViewer.py", 
                 base=base, 
-                icon="icon.ico")]
-        )
+                icon="icon.ico")])
