@@ -33,6 +33,7 @@ import glob
 import time
 import datetime
 import subprocess
+import platform
 
 
 # python 2/3 compatability
@@ -3419,7 +3420,19 @@ class BinViewer(Frame):
         filetypes = (('text files', '*.txt'),('All files', '*.*'))
         selected_file = tkFileDialog.askopenfilename(filetypes=filetypes, initialdir=log_directory, title="Select logfile")
         log.info(selected_file)
-        os.system(selected_file)
+        if platform.system() == 'Windows':
+            os.system(selected_file)
+        else:
+            from shutil import which
+            if which('mousepad') is not None:
+                os.system('mousepad ' + selected_file)
+            elif which('nano') is not None:
+                os.system('nano ' + selected_file)
+            elif which('gedit') is not None:
+                os.system('gedit ' + selected_file)
+            else:                
+                log.info('unable to find suitable editor for the logfile')
+                tkMessageBox.showinfo("View Logs", "Cant find a text editor!")                
         return 
 
     def show_about(self):
