@@ -71,7 +71,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = "3.36.0"
+version = "3.36.1"
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
