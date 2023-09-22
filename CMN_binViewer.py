@@ -2167,6 +2167,7 @@ class BinViewer(Frame):
         if timestamp is None:
             return None, None
         else:
+            timestamp = timestamp[:24] # issue 68, crash when saving single frame
             dtval = datetime.datetime.strptime(timestamp.strip(), '%Y-%m-%d %H:%M:%S.%f')
             for rw in self.meteor_info:
                 if rw[0] >= dtval:
