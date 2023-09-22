@@ -1,5 +1,8 @@
 CMN Binviewer Change Log
 ========================
+3.36.1
+Sep 23: Bugfix in frame extraction.
+
 3.36.0
 Sep 23: Hotkey "R" to display the radiant map if available.
         Hotkey "C" to start confirmation.

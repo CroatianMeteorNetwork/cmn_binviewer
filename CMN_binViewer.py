@@ -71,7 +71,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = "3.36.0"
+version = "3.36.1"
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -2167,6 +2167,7 @@ class BinViewer(Frame):
         if timestamp is None:
             return None, None
         else:
+            timestamp = timestamp[:24] # issue 68, crash when saving single frame
             dtval = datetime.datetime.strptime(timestamp.strip(), '%Y-%m-%d %H:%M:%S.%f')
             for rw in self.meteor_info:
                 if rw[0] >= dtval:
