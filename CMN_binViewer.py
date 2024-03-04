@@ -2584,6 +2584,7 @@ class BinViewer(Frame):
             tkMessageBox.showerror("FTPdetectinfo error", "FTPdetectinfo file not found!")
             return False
         if check_rejected is False:
+            ftpdetect_file = [line for line in ftpdetect_file if 'unfiltered' not in line]
             ftpdetect_file = ftpdetect_file[0]
         else:
             ftpdetect_file = [line for line in ftpdetect_file if 'unfiltered' in line]
