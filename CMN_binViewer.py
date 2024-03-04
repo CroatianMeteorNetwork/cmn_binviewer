@@ -2046,7 +2046,12 @@ class BinViewer(Frame):
         resize_fact = self.image_resize_factor.get()
         if resize_fact <= 0:
             resize_fact = 1
-        imgdata = img.fromarray(img_array.astype(np.uint8)).resize((img_array.shape[1] // resize_fact, img_array.shape[0] // resize_fact), img.Resampling.BILINEAR).convert("RGB")
+        # Image.BILINEAR is deprecated in Pillow 9.x
+        if hasattr(img, 'Resampling'):
+            bilflag = img.Resampling.BILINEAR
+        else:
+            bilflag = img.BILINEAR
+        imgdata = img.fromarray(img_array.astype(np.uint8)).resize((img_array.shape[1] // resize_fact, img_array.shape[0] // resize_fact), bilflag).convert("RGB")
 
         if self.invert.get():
             imgdata = ImageChops.invert(imgdata)
