@@ -1,5 +1,9 @@
 CMN Binviewer Change Log
 ========================
+3.36.2
+Mar 24: bugfix in shower detection in Detected mode. 
+        Remove deprecation warning in Pillow.
+        
 3.36.1
 Sep 23: Bugfix in frame extraction.
 
