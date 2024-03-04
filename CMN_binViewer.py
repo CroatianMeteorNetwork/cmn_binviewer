@@ -71,7 +71,7 @@ from module_confirmationClass import Confirmation
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 
-version = "3.36.1"
+version = "3.36.2"
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -2046,7 +2046,7 @@ class BinViewer(Frame):
         resize_fact = self.image_resize_factor.get()
         if resize_fact <= 0:
             resize_fact = 1
-        imgdata = img.fromarray(img_array.astype(np.uint8)).resize((img_array.shape[1] // resize_fact, img_array.shape[0] // resize_fact), img.BILINEAR).convert("RGB")
+        imgdata = img.fromarray(img_array.astype(np.uint8)).resize((img_array.shape[1] // resize_fact, img_array.shape[0] // resize_fact), img.Resampling.BILINEAR).convert("RGB")
 
         if self.invert.get():
             imgdata = ImageChops.invert(imgdata)
@@ -2162,7 +2162,7 @@ class BinViewer(Frame):
                         vals = li.strip().split(',')
                         beg_dt = datetime.datetime.strptime(vals[0][:21], '%Y%m%d %H:%M:%S.%f') 
                         shower = vals[3].strip()
-                        mag = vals[-1].strip()
+                        mag = vals[14].strip()
                         self.meteor_info.append([beg_dt, shower, mag])
         if timestamp is None:
             return None, None
@@ -2584,6 +2584,7 @@ class BinViewer(Frame):
             tkMessageBox.showerror("FTPdetectinfo error", "FTPdetectinfo file not found!")
             return False
         if check_rejected is False:
+            ftpdetect_file = [line for line in ftpdetect_file if 'unfiltered' not in line]
             ftpdetect_file = ftpdetect_file[0]
         else:
             ftpdetect_file = [line for line in ftpdetect_file if 'unfiltered' in line]
