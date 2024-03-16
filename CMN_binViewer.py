@@ -2603,12 +2603,13 @@ class BinViewer(Frame):
             if self.gif_embed.get():
                 annotation = self.timestamp_label.cget('text')
 
-            makeMP4(current_image, start_frame, end_frame, self.dir_path, mp4_name=gif_path, deinterlace=self.deinterlace.get(),
+            res = makeMP4(current_image, start_frame, end_frame, self.dir_path, mp4_name=gif_path, deinterlace=self.deinterlace.get(),
                     annotate=annotation, fps=self.fps.get(), FF_next=next_image, end_next=end_next, data_type=self.data_type.get(),
                     ffmpeg_path=self.ffmpeg_path_win)
-        self.status_bar.config(text ="done!")
-
-        tkMessageBox.showinfo("Progress", "Animation saved!")
+        if res:
+            self.status_bar.config(text ="done!")
+            tkMessageBox.showinfo("Progress", "Animation saved!")
+            
 
         # Write FPS to config file
         self.write_config()
