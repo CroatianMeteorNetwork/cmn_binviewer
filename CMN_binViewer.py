@@ -650,6 +650,8 @@ class BinViewer(Frame):
         # Read configuration file
         orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines, image_resize_factor, userejected, ffmpeg_path_win = self.readConfig()
 
+        # in case a relative path was stored
+        self.dir_path = os.path.expanduser(self.dir_path)
         # Image resize factor
         self.image_resize_factor = IntVar()
         self.image_resize_factor.set(image_resize_factor)
@@ -2300,7 +2302,10 @@ class BinViewer(Frame):
                 self.dir_path = old_dir_path
             else:
                 self.dir_path = os.getcwd()
-        
+
+        # make sure its the full path        
+        self.dir_path = os.path.expanduser(self.dir_path)
+
         # Update listbox
         self.update_listbox(self.get_bin_list())
 
