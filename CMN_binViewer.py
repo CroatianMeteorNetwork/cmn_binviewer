@@ -3488,6 +3488,8 @@ class BinViewer(Frame):
     def view_logs(self):
         filetypes = (('text files', '*.txt'),('All files', '*.*'))
         selected_file = tkFileDialog.askopenfilename(filetypes=filetypes, initialdir=log_directory, title="Select logfile")
+        if selected_file == '':
+            return
         log.info(selected_file)
         if platform.system() == 'Windows':
             import webbrowser # allows me to open the file in whatever's the default text-file editor
