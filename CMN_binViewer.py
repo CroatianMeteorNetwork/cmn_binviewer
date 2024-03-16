@@ -2591,7 +2591,6 @@ class BinViewer(Frame):
             makeMP4(current_image, start_frame, end_frame, self.dir_path, mp4_name=gif_path, deinterlace=self.deinterlace.get(),
                     annotate=annotation, fps=self.fps.get(), FF_next=next_image, end_next=end_next, data_type=self.data_type.get(),
                     ffmpeg_path=self.ffmpeg_path_win)
-
         self.status_bar.config(text ="done!")
 
         tkMessageBox.showinfo("Progress", "Animation saved!")
@@ -3491,8 +3490,11 @@ class BinViewer(Frame):
         return 
 
     def show_about(self):
-        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'changelog.md'), 'r') as inf:
-            details = inf.readlines()
+        try:
+            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'changelog.md'), 'r') as inf:
+                details = inf.readlines()
+        except:
+            print('changelog not found')
         
         aboutBox("About",
             """CMN_binViewer version: """ + str(version) + """
