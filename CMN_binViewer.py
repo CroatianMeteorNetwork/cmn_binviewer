@@ -70,8 +70,9 @@ from module_confirmationClass import Confirmation
 # import module_exportLogsort as exportLogsort
 from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
+from makeMP4 import makeMP4
 
-version = "3.36.2"
+version = "3.37.0"
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -80,6 +81,8 @@ global_bg = "Black"
 global_fg = "Gray"
 
 config_file = 'config.ini'
+
+run_dir = os.path.abspath(".")
 
 log_directory = 'CMN_binViewer_logs'
 
@@ -642,9 +645,13 @@ class BinViewer(Frame):
 
         self.layout_vertical = BooleanVar()  # Layout variable
 
-        # Read configuration file
-        orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines, image_resize_factor, userejected = self.readConfig()
+        self.ffmpeg_path_win = ''
 
+        # Read configuration file
+        orientation, fps_config, self.dir_path, external_video_config, edge_marker, external_guidelines, image_resize_factor, userejected, ffmpeg_path_win = self.readConfig()
+
+        # in case a relative path was stored
+        self.dir_path = os.path.expanduser(self.dir_path)
         # Image resize factor
         self.image_resize_factor = IntVar()
         self.image_resize_factor.set(image_resize_factor)
@@ -738,6 +745,8 @@ class BinViewer(Frame):
 
         self.external_guidelines = IntVar()
         self.external_guidelines.set(external_guidelines)
+
+        self.ffmpeg_path_win = ffmpeg_path_win
 
         # GIF
         self.gif_embed = BooleanVar()
@@ -998,6 +1007,7 @@ class BinViewer(Frame):
         external_guidelines = 1
         image_resize_factor = 1
         userejected = 0
+        ffmpeg_path_win = ''
 
         read_list = (orientation, fps)
 
@@ -1018,6 +1028,7 @@ class BinViewer(Frame):
             self.external_guidelines.set(external_guidelines)
             self.image_resize_factor = IntVar()
             self.image_resize_factor.set(image_resize_factor)
+            self.ffmpeg_path_win = ''
             self.write_config()
             config_lines = open(config_file, 'r').readlines()
 
@@ -1049,8 +1060,11 @@ class BinViewer(Frame):
 
             if 'image_resize_factor' in line[0]:
                 image_resize_factor = int(line[1])
+            
+            if 'ffmpeg_path_win' in line[0]:
+                ffmpeg_path_win = line[1].strip()
 
-        read_list = (orientation, fps, dir_path, external_video, edge_marker, external_guidelines, image_resize_factor, userejected)
+        read_list = (orientation, fps, dir_path, external_video, edge_marker, external_guidelines, image_resize_factor, userejected, ffmpeg_path_win)
 
         return read_list
 
@@ -1103,6 +1117,7 @@ class BinViewer(Frame):
         new_config.write("edge_marker = " + str(edge_marker) + "\n")
         new_config.write("external_guidelines = " + str(external_guidelines) + "\n")
         new_config.write("userejected = " + str(userejected) + "\n")
+        new_config.write("ffmpeg_path_win = " + self.ffmpeg_path_win + '\n')
         new_config.close()
 
         return True
@@ -1225,7 +1240,8 @@ class BinViewer(Frame):
             if self.save_animation_frame.get() is True:
                 self.animation_panel.grid(row = 8, column = start_column + enabled_frames, rowspan = 2, columnspan = 1, sticky = "NS", padx=2, pady=5, ipadx=3, ipady=3)
                 enabled_frames += 1
-                self.gif_make_btn.grid(row = 9, column = 7, rowspan = 4, sticky = "NSEW")
+                self.gif_make_btn.grid(row = 9, column = 7, rowspan = 4, columnspan = 2, sticky = "NSEW")
+                self.mp4_make_btn.grid(row = 9, column = 9, rowspan = 4, columnspan = 2, sticky = "NSEW")
             else:
                 self.animation_panel.grid_forget()
 
@@ -1262,6 +1278,7 @@ class BinViewer(Frame):
             self.levels_label.grid(row = 5, column = 6, rowspan = 1, padx=2, pady=5, ipadx=3, ipady=3, sticky ="NEW")
 
             self.gif_make_btn.grid(row = 13, column = 4, rowspan = 2, columnspan = 2, sticky = "EW", padx=2, pady=5)
+            self.mp4_make_btn.grid(row = 13, column = 6, rowspan = 2, columnspan = 2, sticky = "EW", padx=2, pady=5)
 
             self.frames_slider_panel.grid(row = 6, column = 6, rowspan = 1, padx=2, pady=5, ipadx=3, ipady=3, sticky ="NEW")
 
@@ -2285,7 +2302,10 @@ class BinViewer(Frame):
                 self.dir_path = old_dir_path
             else:
                 self.dir_path = os.getcwd()
-        
+
+        # make sure its the full path        
+        self.dir_path = os.path.expanduser(self.dir_path)
+
         # Update listbox
         self.update_listbox(self.get_bin_list())
 
@@ -2494,7 +2514,7 @@ class BinViewer(Frame):
 
         return save_path, image_list
 
-    def make_gif(self):
+    def make_gif_or_mp4(self, gif=True):
         """ Makes a GIF animation file with given options.
         """
 
@@ -2521,13 +2541,18 @@ class BinViewer(Frame):
             except:
                 pass
 
-        self.status_bar.config(text ="Making GIF, please wait... It can take up to 15 or more seconds, depending on the size and options")
+        imgtype='GIF'
+        extn = '.gif'
+        if not gif:
+            imgtype='MP4'
+            extn = '.mp4'
+        self.status_bar.config(text ="Making {}, please wait... It can take up to 15 or more seconds, depending on the size and options".format(imgtype))
 
-        gif_name = current_image.split('.')[0] + "fr_" + str(self.start_frame.get()) + "-" + str(self.end_frame.get()) + ".gif"
+        gif_name = current_image.split('.')[0] + "fr_" + str(self.start_frame.get()) + "-" + str(self.end_frame.get()) + extn
 
-        gif_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save GIF animation", initialfile = gif_name, defaultextension = ".gif")
+        gif_path = tkFileDialog.asksaveasfilename(initialdir = self.dir_path, parent = self.parent, title = "Save animation", initialfile = gif_name, defaultextension = extn)
 
-        # Abort GIF making if no file is chosen
+        # Abort making animation if no file is chosen
         if gif_path == '':
             return 0
 
@@ -2542,12 +2567,49 @@ class BinViewer(Frame):
         minv_temp = self.min_lvl_scale.get()
         gamma_temp = self.gamma.get()
         maxv_temp = self.max_lvl_scale.get()
+        start_frame = self.start_frame.get()
+        end_frame = self.end_frame.get()
+        next_image = None
+        end_next = None
+        log.info(current_image)
+        if self.mode.get() == 4: # rejected
+            start_frame = int(current_image.split(' ')[2])
+            end_frame = min(255, int(current_image.split(' ')[4])+5) 
+            current_image = current_image.split(' ')[0]
+        ff_list = [[current_image, (start_frame, end_frame)]]
 
-        makeGIF(FF_input = current_image, start_frame = self.start_frame.get(), end_frame = self.end_frame.get(), ff_dir=self.dir_path, deinterlace = self.deinterlace.get(), print_name = self.gif_embed.get(), Flat_frame = flat_frame, Flat_frame_scalar = flat_frame_scalar, dark_frame = dark_frame, gif_name_parse = gif_path, repeat = repeat_temp, fps = self.fps.get(), minv = minv_temp, gamma = gamma_temp, maxv = maxv_temp, perfield = self.perfield_var.get(), data_type=self.data_type.get())
+        # check to see if the meteor is split across two FFs and if so, find the additional frames
+        if end_frame == 255 and (self.mode.get() == 2 or self.mode.get() == 4):
+            try:
+                next_image = self.listbox.get(self.listbox.curselection()[0] + 1)
+                # in detection mode, the image name contains the start/end frames of the detection
+                if int(next_image.split(' ')[2]) == 0: 
+                    end_next = min(255, int(next_image.split(' ')[4])+5) 
+                    next_image = next_image.split(' ')[0] 
+                    log.info(next_image)
+                    ff_list.append([next_image, (0, end_next)])
+                else:
+                    next_image = None
+            except:
+                pass
+        if gif:
+            makeGIF(FF_input=ff_list, start_frame=start_frame, end_frame=end_frame, 
+                    ff_dir=self.dir_path, deinterlace=self.deinterlace.get(), print_name=self.gif_embed.get(), 
+                    Flat_frame=flat_frame, Flat_frame_scalar=flat_frame_scalar, dark_frame=dark_frame, gif_name_parse=gif_path, 
+                    repeat=repeat_temp, fps=self.fps.get(), minv=minv_temp, gamma=gamma_temp, maxv=maxv_temp, 
+                    perfield = self.perfield_var.get(), data_type=self.data_type.get())
+        else:
+            annotation = ''
+            if self.gif_embed.get():
+                annotation = self.timestamp_label.cget('text')
 
-        self.status_bar.config(text ="GIF done!")
-
-        tkMessageBox.showinfo("GIF progress", "GIF saved!")
+            res = makeMP4(current_image, start_frame, end_frame, self.dir_path, mp4_name=gif_path, deinterlace=self.deinterlace.get(),
+                    annotate=annotation, fps=self.fps.get(), FF_next=next_image, end_next=end_next, data_type=self.data_type.get(),
+                    ffmpeg_path=self.ffmpeg_path_win)
+        if res:
+            self.status_bar.config(text ="done!")
+            tkMessageBox.showinfo("Progress", "Animation saved!")
+            
 
         # Write FPS to config file
         self.write_config()
@@ -3426,26 +3488,36 @@ class BinViewer(Frame):
     def view_logs(self):
         filetypes = (('text files', '*.txt'),('All files', '*.*'))
         selected_file = tkFileDialog.askopenfilename(filetypes=filetypes, initialdir=log_directory, title="Select logfile")
+        if selected_file == '':
+            return
         log.info(selected_file)
         if platform.system() == 'Windows':
             import webbrowser # allows me to open the file in whatever's the default text-file editor
             webbrowser.open(selected_file)
         else:
-            from shutil import which
-            if which('mousepad') is not None:
-                os.system('mousepad ' + selected_file)
-            elif which('nano') is not None:
-                os.system('nano ' + selected_file)
-            elif which('gedit') is not None:
-                os.system('gedit ' + selected_file)
-            else:                
-                log.info('unable to find suitable editor for the logfile')
-                tkMessageBox.showinfo("View Logs", "Cant find a text editor!")                
+            if sys.version_info[0] < 3:
+                os.system('leafpad ' + selected_file)
+            else:
+                from shutil import which
+                if which('mousepad') is not None:
+                    os.system('mousepad ' + selected_file)
+                elif which('nano') is not None:
+                    os.system('nano ' + selected_file)
+                elif which('gedit') is not None:
+                    os.system('gedit ' + selected_file)
+                else:                
+                    log.info('unable to find suitable editor for the logfile')
+                    tkMessageBox.showinfo("View Logs", "Cant find a text editor!")                
         return 
 
     def show_about(self):
-        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'changelog.md'), 'r') as inf:
-            details = inf.readlines()
+        try:
+
+            with open(os.path.join(run_dir, 'changelog.md'), 'r') as inf:
+                details = inf.readlines()
+        except:
+            details = 'changelog not found'
+            print('changelog not found')
         
         aboutBox("About",
             """CMN_binViewer version: """ + str(version) + """
@@ -3554,10 +3626,10 @@ class BinViewer(Frame):
 
         # File menu
         fileMenu = Menu(self.menuBar, tearoff=0)
-        fileMenu.add_command(label = "Open FF* folder", command = self.askdirectory)
+        fileMenu.add_command(label = "Open FF* folder", underline=0, command = self.askdirectory)
 
         fileMenu.add_separator()
-        fileMenu.add_command(label="Exit", command=self.quitApplication)
+        fileMenu.add_command(label="Exit", underline=1, command=self.quitApplication)
         # fileMenu.add_separator()
 
         self.menuBar.add_cascade(label="File", underline=0, menu=fileMenu)
@@ -3829,7 +3901,8 @@ class BinViewer(Frame):
         perfield_btn = Checkbutton(self.animation_panel, text = "Per field", variable = self.perfield_var)
         perfield_btn.grid(row = 11, column = 6, sticky = "W")
 
-        self.gif_make_btn = StyledButton(self.animation_panel, text ="GIF", command = self.make_gif, width = 10)
+        self.gif_make_btn = StyledButton(self.animation_panel, text ="GIF", command = lambda: self.make_gif_or_mp4(True), width = 10)
+        self.mp4_make_btn = StyledButton(self.animation_panel, text ="MP4", command = lambda: self.make_gif_or_mp4(False), width = 10)
         # Position set in update_layout function
 
         # Frame slider

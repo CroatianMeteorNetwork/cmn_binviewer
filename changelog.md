@@ -1,5 +1,10 @@
 CMN Binviewer Change Log
 ========================
+3.37.0
+Mar 24: Join split meteors when making GIF
+        Add functionality to create MP4
+        Small bugfixes to prevent unexpected exits
+        
 3.36.2
 Mar 24: bugfix in shower detection in Detected mode. 
         Remove deprecation warning in Pillow.
