@@ -424,7 +424,9 @@ def deinterlace_blend(image_array):
     return full_proc_image
 
 
-def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace = True, print_name = True, optimize = True, Flat_frame = None, Flat_frame_scalar = None, dark_frame = None, gif_name_parse = None, repeat = True, fps = 25, minv = None, gamma = None, maxv = None, perfield = False, data_type=1):
+def makeGIF(FF_input, start_frame=0, end_frame =255, ff_dir = '.', deinterlace = True, print_name = True, 
+            optimize = True, Flat_frame = None, Flat_frame_scalar = None, dark_frame = None, 
+            gif_name_parse = None, repeat = True, fps = 25, minv = None, gamma = None, maxv = None, perfield = False, data_type=1):
     """ Makes a GIF animation for given FF_file, in given frame range (0-255).
 
     start_frame: Starting frame (default 0)
