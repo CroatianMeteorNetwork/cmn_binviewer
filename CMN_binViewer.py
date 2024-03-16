@@ -2572,6 +2572,10 @@ class BinViewer(Frame):
         next_image = None
         end_next = None
         log.info(current_image)
+        if self.mode.get() == 4: # rejected
+            start_frame = int(current_image.split(' ')[2])
+            end_frame = min(255, int(current_image.split(' ')[4])+5) 
+            current_image = current_image.split(' ')[0]
         ff_list = [[current_image, (start_frame, end_frame)]]
 
         # check to see if the meteor is split across two FFs and if so, find the additional frames
