@@ -82,6 +82,8 @@ global_fg = "Gray"
 
 config_file = 'config.ini'
 
+run_dir = os.path.abspath(".")
+
 log_directory = 'CMN_binViewer_logs'
 
 tempImage = 0
@@ -2564,6 +2566,7 @@ class BinViewer(Frame):
         end_frame = self.end_frame.get()
         next_image = None
         end_next = None
+        log.info(current_image)
         ff_list = [[current_image, (start_frame, end_frame)]]
 
         # check to see if the meteor is split across two FFs and if so, find the additional frames
@@ -2574,7 +2577,10 @@ class BinViewer(Frame):
                 if int(next_image.split(' ')[2]) == 0: 
                     end_next = min(255, int(next_image.split(' ')[4])+5) 
                     next_image = next_image.split(' ')[0] 
+                    log.info(next_image)
                     ff_list.append([next_image, (0, end_next)])
+                else:
+                    next_image = None
             except:
                 pass
         if gif:
@@ -3491,9 +3497,11 @@ class BinViewer(Frame):
 
     def show_about(self):
         try:
-            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'changelog.md'), 'r') as inf:
+
+            with open(os.path.join(run_dir, 'changelog.md'), 'r') as inf:
                 details = inf.readlines()
         except:
+            details = 'changelog not found'
             print('changelog not found')
         
         aboutBox("About",

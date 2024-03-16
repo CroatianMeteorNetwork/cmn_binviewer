@@ -24,6 +24,7 @@ def makeMP4(FF_input, start_frame, end_frame, ff_dir, mp4_name='', deinterlace=T
     
     log.info('making mp4')
 
+    cwd = os.getcwd()
     os.chdir(ff_dir)
     ffBinRead = readFF(FF_input, datatype=data_type)    
     for k in range(start_frame, end_frame+1):
@@ -81,6 +82,7 @@ def makeMP4(FF_input, start_frame, end_frame, ff_dir, mp4_name='', deinterlace=T
             time.sleep(2)
             shutil.rmtree(tmp_dir)
     log.info('done')
+    os.chdir(cwd)
     return 
 
 
