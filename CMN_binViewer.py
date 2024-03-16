@@ -3495,16 +3495,19 @@ class BinViewer(Frame):
             import webbrowser # allows me to open the file in whatever's the default text-file editor
             webbrowser.open(selected_file)
         else:
-            from shutil import which
-            if which('mousepad') is not None:
-                os.system('mousepad ' + selected_file)
-            elif which('nano') is not None:
-                os.system('nano ' + selected_file)
-            elif which('gedit') is not None:
-                os.system('gedit ' + selected_file)
-            else:                
-                log.info('unable to find suitable editor for the logfile')
-                tkMessageBox.showinfo("View Logs", "Cant find a text editor!")                
+            if sys.version_info[0] < 3:
+                os.system('leafpad ' + selected_file)
+            else:
+                from shutil import which
+                if which('mousepad') is not None:
+                    os.system('mousepad ' + selected_file)
+                elif which('nano') is not None:
+                    os.system('nano ' + selected_file)
+                elif which('gedit') is not None:
+                    os.system('gedit ' + selected_file)
+                else:                
+                    log.info('unable to find suitable editor for the logfile')
+                    tkMessageBox.showinfo("View Logs", "Cant find a text editor!")                
         return 
 
     def show_about(self):
