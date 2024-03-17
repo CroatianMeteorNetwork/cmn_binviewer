@@ -10,7 +10,10 @@ import subprocess
 import time
 import errno
 import logging
+from distutils.spawn import find_executable
+
 from FF_bin_suite import readFF, buildFF, add_text, saveImage
+
 if sys.version_info[0] < 3:
     import tkMessageBox
 else:
@@ -18,24 +21,21 @@ else:
 
 
 log = logging.getLogger("CMN_binViewer")
+run_dir = os.path.abspath(".")
 
 
 def makeMP4(FF_input, start_frame, end_frame, ff_dir, mp4_name='', deinterlace=True, annotate='', fps=25, FF_next=None, end_next=None, data_type=1,
             ffmpeg_path=''):
     if platform.system() == 'Windows':
         if ffmpeg_path == '':
-            # ffmpeg.exe path
-            root = os.path.dirname(__file__)
-            ffmpeg_path = os.path.join(root, 'ffmpeg.exe')
-            if not os.path.isfile(ffmpeg_path):
-                ffmpeg_path = os.path.join(root, '..','RMS','Utils','ffmpeg.exe')
-                if not os.path.isfile(ffmpeg_path):
-                    tkMessageBox.showinfo("Alert", "ffmpeg.exe not found! Add its location to the config file")
-                    return False
-        if not os.path.isfile(ffmpeg_path.replace('"','')):
-            tkMessageBox.showinfo("Alert", "ffmpeg.exe not found! Add its location to the config file")
+            ffmpeg_path = find_executable('ffmpeg.exe')
+            if ffmpeg_path == 'ffmpeg.exe':
+                ffmpeg_path = os.path.join(run_dir, ffmpeg_path)
+        ffmpegisfile = os.path.isfile(ffmpeg_path.replace('"',''))
+        if ffmpeg_path is None or ffmpegisfile is False:
+            tkMessageBox.showinfo("Alert", "ffmpeg.exe not found!")
             return False
-    
+
     out_dir = os.path.split(mp4_name)[0]
     tmp_dir = out_dir + '/tmp_img_dir'
     if os.path.isdir(tmp_dir):
@@ -67,7 +67,7 @@ def makeMP4(FF_input, start_frame, end_frame, ff_dir, mp4_name='', deinterlace=T
     # If running on Windows, use ffmpeg.exe
     if platform.system() == 'Windows':
         # Construct the ecommand for ffmpeg           
-        com = ffmpeg_path + " -hide_banner -loglevel error -pix_fmt yuv420p  -y -f image2 -pattern_type sequence -start_number " + str(start_frame) + " -i " + tmp_img_patt +" " + mp4_name
+        com = '"' + ffmpeg_path + '" -hide_banner -loglevel error -pix_fmt yuv420p  -y -f image2 -pattern_type sequence -start_number ' + str(start_frame) + ' -i ' + tmp_img_patt +' ' + mp4_name
     else:
         # If avconv is not found, try using ffmpeg
         software_name = "avconv"
