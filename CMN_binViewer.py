@@ -2593,7 +2593,7 @@ class BinViewer(Frame):
             except:
                 pass
         if gif:
-            makeGIF(FF_input=ff_list, start_frame=start_frame, end_frame=end_frame, 
+            res = makeGIF(FF_input=ff_list, start_frame=start_frame, end_frame=end_frame, 
                     ff_dir=self.dir_path, deinterlace=self.deinterlace.get(), print_name=self.gif_embed.get(), 
                     Flat_frame=flat_frame, Flat_frame_scalar=flat_frame_scalar, dark_frame=dark_frame, gif_name_parse=gif_path, 
                     repeat=repeat_temp, fps=self.fps.get(), minv=minv_temp, gamma=gamma_temp, maxv=maxv_temp, 
