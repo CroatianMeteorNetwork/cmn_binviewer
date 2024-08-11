@@ -50,7 +50,19 @@ source ~/vBinviewer/bin/activate
 python CMN_binViewer.py  
 
 ```
+
+### Uprading
+
+To upgrade on Windows, just download and install the latest package. 
+To upgrade on Linux, Raspberry Pi or Mac, open a terminal window and type the following
+
+```
+cd ~/source/cmn_binviewer
+git pull
+```
+
 ### Potential issues:  
+
 If python3 isn't available, you can try python2.7 instead when creating the virtualenv  
 If you get an out of memory error while installing the libraries, use  
 ```
