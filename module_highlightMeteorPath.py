@@ -3,6 +3,7 @@
 
 import numpy as np
 
+
 def highlightMeteorPath(input_img, rho, phi, path_width=20):
     """ Draws two guides parallel to the meteor so it highlights the detection. 
 
