@@ -7,6 +7,7 @@ mtp_detections='MTPdetections.txt'
 logfile='logfile.txt'
 logsort='LOG_SORT.INF'
 
+
 def logsort_date(date, provided=False):
     if provided:
         year, month, day, hour, minute, sec = date
@@ -25,12 +26,14 @@ def logsort_date(date, provided=False):
 
     return today.strftime('%Y%m%d')+tomorrow.strftime('%d')
 
+
 def count(bmp, filter_list): #Counting the number of times a certain BMP appears on the list (used for detection threshold)
     z=0
     for line in filter_list:
         if line==bmp:
             z=z+1
     return z
+
 
 def add_zero(num):
     if num>=10000:
@@ -43,10 +46,12 @@ def add_zero(num):
         return '000'+str('%.3f' % num)
     return '0000'+str('%.3f' % num)
 
+
 def add_zero_hms(num):
     if num>=10: 
         return str(num)
     return '0'+str(num)
+
 
 def add_zero_ms(num):
     if num>=100: 
@@ -55,6 +60,7 @@ def add_zero_ms(num):
         return '0'+str(num)
     return '00'+str(num)
 
+
 def sec2time(sec): #Seconds to hh:mm:ss:sss format
     hour=int(sec/3600)
     minute=int(sec/60)-hour*60
@@ -62,10 +68,12 @@ def sec2time(sec): #Seconds to hh:mm:ss:sss format
     msecond=int(str('%.3f' % sec).split('.')[1])
     return add_zero_hms(hour)+':'+add_zero_hms(minute)+':'+add_zero_hms(second)+':'+add_zero_ms(msecond)
 
+
 def stop_time(bmp, logfile_list_stop): #Getting stop time from logfile for particular BMP
     for line in logfile_list_stop:
         if 'stop' in line and bmp in line:
             return line.split()[4]
+
 
 def mtp2detected(directory, date=None): #Function for making fake detected files (logsorts and such)
     if date is not None:
@@ -153,5 +161,3 @@ def mtp2detected(directory, date=None): #Function for making fake detected files
             newfile.close()
 
             return True
-
-#mtp2detected('.\\2014_04_22_20_09_18\\')

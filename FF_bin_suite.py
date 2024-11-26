@@ -714,61 +714,6 @@ def process_array(img_array, Flat_frame = None, Flat_frame_scalar = None, dark_f
     return img_array
 
 
-
-# def process_avepixel(ff_bin, Flat_frame, Flat_frame_scalar, dark_frame = None, mode = 0, data_type=1):
-#     """ Processes avepixel of a given FF*.bin file. Makes flat field division and deinterlacing.
-
-#     ff_bin: name of FF*.bin file
-#     Flat_frame: flat frame array (load flat frame or make it)
-#     Flat_frame_scalar: flat frame median value (load flat frame or make it)
-#     mode: 0 for division, 1 for subtraciton of flat frame"""
-
-#     if dark_frame is None:
-#         try:
-#             dark_frame = load_dark(flat_dir + 'dark.bmp')
-#         except:
-#             dark_frame = np.zeros(shape=(nrows, ncols), dtype=np.int) 
-
-#     img_ave = readFF(ff_bin, datatype=data_type).avepixel
-
-#     img_ave = img_ave.astype(float)
-
-#     img_ave = np.subtract(img_ave, dark_frame)
-
-#     ave_scalar = np.mean(img_ave)
-
-#     if mode == 0: #Divide flat
-
-#         Flat_frame[Flat_frame == 0] = 1
-#         ave_noflat = img_ave / Flat_frame
-#         ave_noflat = np.multiply(ave_noflat, Flat_frame_scalar)
-
-#     elif mode == 1: #Subtract flat
-#         ave_noflat = img_ave - Flat_frame
-#         ave_noflat = add_scalar(img_ave, Flat_frame_scalar)
-        
-
-#     #print(img_ave[360][89],"/", Flat_frame[360][89], "=", ave_noflat[360][89])
-
-#     #print(ave_noflat[100][100])
-
-#     #print('scalar', Flat_frame_scalar)
-
-
-#     ave_noflat = np.clip(ave_noflat, 0, 255)
-
-#     ave_noflat = deinterlace_blend(ave_noflat)
-
-#     #print(ave_noflat[0][0])
-
-#     saveImage(img_ave, "1_avg.bmp", print_name = False)
-#     saveImage(Flat_frame, "2_temporal_median.bmp", print_name = False)
-#     saveImage(ave_noflat, "3_avg_corrected.bmp", print_name = False)
-
-#     return ave_noflat
-
-
-
 def get_processed_frames(ff_bin, save_path = '.', data_type=1, Flat_frame=None, Flat_frame_scalar=None, dark_frame=None, start_frame=0, end_frame=255, logsort_export=False, no_background=False):
     """ Makes calibrated BMPs of a particular detection. Used for fireball processing.
 
@@ -789,7 +734,7 @@ def get_processed_frames(ff_bin, save_path = '.', data_type=1, Flat_frame=None, 
         array = readFF(ff_bin, data_type).maxpixel
         nrows = len(array)
         ncols = len(array[0])
-        skypatrol_stacked_image = np.zeros(shape=(nrows, ncols), dtype=np.int)
+        skypatrol_stacked_image = np.zeros(shape=(nrows, ncols), dtype=np.uint)
 
     # Read FF bin
     ffBinRead = readFF(ff_bin, data_type)
@@ -957,10 +902,10 @@ def make_flat_frame(flat_dir, flat_save = 'flat.bmp', col_corrected = False, dar
             dark_frame = load_dark(flat_dir + 'dark.bmp')
 
         except:
-            dark_frame = np.zeros(shape=(nrows, ncols), dtype=np.int) 
+            dark_frame = np.zeros(shape=(nrows, ncols), dtype=np.uint) 
 
     elif isinstance(dark_frame, bool):
-        dark_frame = np.zeros(shape=(nrows, ncols), dtype=np.int) 
+        dark_frame = np.zeros(shape=(nrows, ncols), dtype=np.uint) 
 
     for line in flat_raw:
 
@@ -1198,68 +1143,6 @@ def find_crop_size(crop_array, size = 15):
     return first_x, first_y, last_x, last_y
 
 
-
-# def rotate_n_crop(ff_bin, ff_path, Flat_frame, Flat_frame_scalar):
-#     """ Function for rotating the maxframe from bin file and cropping the meteor part based on the FTP_detectinfo detection data.
-#     """
-
-#     from scipy.ndimage.interpolation import rotate
-
-#     if not ff_path[-1] == os.sep:
-#         ff_path += os.sep
-
-#     if not os.path.exists(ff_path):
-#         log.info(ff_path+" does not exist!")
-#         return False
-
-#     FTPdetect_file = ""
-#     for line in os.listdir(ff_path):
-#         if ("FTPdetectinfo_" in line) and (".txt" in line) and (not "_original" in line):
-#             FTPdetect_file = line
-#             break
-
-#     ff_bin_path = ff_path+ff_bin
-
-#     max_nomean_array = max_nomean(ff_bin_path, Flat_frame, Flat_frame_scalar)
-#     saveImage(max_nomean_array, ff_bin_path+"_max_nomean.bmp", print_name = False)
-
-#     max_bg_mean = int(np.mean(max_nomean_array))
-#     log.info(max_bg_mean)
-
-#     ###MUST MAKE SOME SORT OF IMAGE MASKING HERE!!!!!!!!!!!!! Problem is when meteor is in the corner, then the lightcurve will be calculated with dark corners during rotation
-
-#     coord_list, rot_angle = get_FTPdetect_coordinates(ff_path+FTPdetect_file, ff_bin)
-
-#     nrows = len(max_nomean_array)
-#     ncols = len(max_nomean_array[0])
-#     crop_array = np.zeros(shape=(nrows, ncols), dtype=np.int) #Make a temporary 2D array which helps determine the crop coordinates after rotation
-
-#     for coord in coord_list:
-#         x = coord[0]
-#         y = coord[1]
-#         crop_array[x][y] = 255
-
-#     crop_array = rotate(crop_array, -rot_angle+90, order = 0)
-
-#     first_x, first_y, last_x, last_y = find_crop_size(crop_array)
-
-#     saveImage(crop_array, 'test_croptest.bmp', print_name = False)
-
-#     rotated_img = rotate(max_nomean_array, -rot_angle+90, order = 0)
-
-#     rotated_img[rotated_img < 3] = max_bg_mean #Polish out the black edges
-#     #log.info(rotated_img)
-
-#     max_nomean_croped = rotated_img[first_y:last_y, first_x:last_x] #Crop out the image array
-
-#     saveImage(max_nomean_array, 'test_raw.bmp', print_name = False)
-#     saveImage(rotated_img, 'test_rotated.bmp', print_name = False)
-#     saveImage(max_nomean_croped, 'test_meteor_croped.bmp', print_name = False)
-
-#     return max_nomean_croped
-
-
-
 def get_lightcurve(meteor_array):
     """ Calculates the sum of column level values of a given array. For croped meteor image this gives its lightcurve.
     """
@@ -1270,7 +1153,6 @@ def get_lightcurve(meteor_array):
         lightcurve.append(np.sum(meteor_array[:, i:i+1]))
 
     return lightcurve
-
 
 
 def colorize_maxframe(ff_bin, minv = None, gamma = None, maxv = None):
@@ -1291,24 +1173,6 @@ def colorize_maxframe(ff_bin, minv = None, gamma = None, maxv = None):
     #Adjust levels (if any given)
     odd_frame = adjust_levels(odd_frame, minv, gamma, maxv)
     even_frame = adjust_levels(even_frame, minv, gamma, maxv)
-
-    #mean = int(np.mean(odd_frame))
-
-    #Saturate pixels aboue certain value
-    #odd_frame[odd_frame > 3*mean] = 100
-    #even_frame[even_frame > 3*mean] = 100
-
-    #ff_maxframe_noavg_deinter = blend_lighten(odd_frame, even_frame)
-
-    #nrows = len(odd_frame)
-    #ncols = len(odd_frame[0])
-
-    #green_channel = np.zeros(shape=(nrows, ncols), dtype=np.int)
-    #green_channel.fill(mean)
-
-    #colored_array = np.dstack((odd_frame, ff_maxframe_noavg_deinter, even_frame)) #R G B
-    #colored_array = np.dstack((ff_maxframe_noavg_deinter, odd_frame, even_frame)) #R G B
-    #colored_array = np.dstack((odd_frame, even_frame, ff_maxframe_noavg_deinter)) #R G B
 
     colored_array = np.dstack((odd_frame, even_frame, even_frame)) #R G B
 
@@ -1458,196 +1322,3 @@ def cropDetectionSegments(ffBinRead, segmentList, cropSize = 64):
         #saveImage(cropedArray, "test_"+str(frame)+'.bmp', print_name = False)
 
     return cropedList
-        
-
-
-
-
-
-# if __name__ == "__main__":
-
-    # import matplotlib.pyplot as plt
-
-    #ftpdetect = "C:\\Users\\Laptop\\Desktop\\2014080809-Processed\\FTPdetectinfo_0453_2014_08_08.txt"
-
-    #makeGIF(get_FTPdetect_frames(ftpdetect), 'C:\\Users\\Laptop\\Desktop\\2014080809-Processed')
-
-    #make_night_GIF("C:\\Users\\Laptop\\Desktop\\VIB_2014080809-Processed")
-    #make_night_GIF("C:\\Users\\Laptop\\Desktop\\PUA_2014080809-Processed")
-    #make_night_GIF("E:\\VSA2014\\KOWA_RAW\\2014_08_02_19_54_58_archived")
-
-
-    #def batchmakeGIF(ff_list, deinterlace = True, optimize = True):
-    #   for entry in ff_list:
-
-    #image_name = "FF451_20140810_205811_500_0118528.bin"
-
-    #image_k = buildFF(readFF(image_name), 70) #Show K-frame from image
-
-    #saveImage(move_array_1up(deinterlace_array_odd(image_k)), 'test_odd.bmp')
-    #saveImage(deinterlace_array_even(image_k), 'test_even.bmp')
-    #saveImage(image_k, 'test_raw.bmp')
-
-
-    #full_proc_image = deinterlace_blend(image_array)
-    #saveImage(full_proc_image, 'test_full_proc.bmp')
-
-    #image_ave = deinterlace_blend(readFF(image_name).maxpixel) #Show avepixel image
-
-    #saveImage(image_ave, 'ksd.bmp')
-
-
-    # fig1 = plt.subplot(1, 2, 1)
-    # fig1.imshow(image_k, cmap=plt.cm.gray, interpolation='nearest')
-    # fig1.set_title('K-frame image')
-
-
-    # fig2 = plt.subplot(1,2, 2)
-    # fig2.imshow(image_ave, cmap=plt.cm.gray, interpolation='nearest')
-    # fig2.set_title('Average image')
-    # plt.show()
-
-    #makeGIF(image_name, 143, 160)
-    #makeGIF("FF451_20140811_005403_484_0472320.bin", 169, 189)
-
-    #batchgif_test = [["FF453_20140808_002244_870_0468224.bin", (143, 160)], ["FF459_20140808_234407_189_0429568.bin", (230, 251)]]
-
-    #makeGIF(batchgif_test)
-
-    #make_night_GIF("C:\\Users\\Admin\\Desktop\\PER_GIF_making\\PUA_2014081213-Processed")
-
-    #makeGIF("C:\\Users\\Admin\\Desktop\\PER_GIF_making\\PUA_2014081213-Processed\\FF451_20140812_221530_133_0312320.bin", 68, 112, print_name = False)
-
-    #img_name = "FF453_20140808_002244_870_0468224.bin"
-    #colorized_frame = colorize_maxframe(img_name)
-    #saveImage(colorized_frame, img_name+'_colorized.bmp', print_name = False)
-
-
-    # REGARDING FLATFIELDING AND LIGHTCURVE MAKING:
-
-    #flat_dir = "C:\\Users\\Admin\\Desktop\\PER_GIF_making\\PUA_2014081213-Processed\\"
-    #flat_dir = "C:\\Users\\Admin\\Desktop\\PER_GIF_making\\PUA_flat\\"
-    #flat_dir = "C:\\Users\\Admin\\Desktop\\Pula_kowa\\calib_median\\"
-    #flat_dir = "flat_sample3\\"
-    #flat_dir = "C:\\Users\\Admin\\Desktop\\155mm_FlatTests\\Detections\\"
-
-    #Flat_frame, Flat_frame_scalar = make_flat_frame(flat_dir, flat_save = "calib_frame.bmp", col_corrected = False)
-
-    #img_name = "FF451_20140812_221530_133_0312320.bin"
-
-    #img_max = readFF(flat_dir + img_name).maxpixel
-
-    #saveImage(img_max, flat_dir+img_name+"_original.bmp", print_name = False)
-    #start = time.clock()
-    #leveled = adjust_levels(img_max, 23, 1.36, 102)
-    #end = time.clock()
-    #log.info(end-start)
-    #saveImage(leveled, flat_dir+img_name+"_leveled.bmp", print_name = False)
-
-    #saveImage(colorize_maxframe(flat_dir+img_name), 'color_test_fast.bmp', print_name = False)
-    #saveImage(readFF(flat_dir+img_name).avepixel, flat_dir+'flat.bmp', print_name=False)
-
-    # Flat_frame, Flat_frame_scalar = load_flat(flat_dir+"calib_frame.bmp")
-
-    # for bin in os.listdir(flat_dir):
-    #   if bin.split('.')[-1] == 'bin':
-    #       saveImage(readFF(flat_dir+bin).maxpixel, flat_dir+bin+'_raw_max.bmp', print_name = False)
-    #       saveImage(readFF(flat_dir+bin).avepixel, flat_dir+bin+'_raw_ave.bmp', print_name = False)
-    #       saveImage(pr
-    # ocess_avepixel(flat_dir+bin, Flat_frame, Flat_frame_scalar), flat_dir+bin+'_processed.bmp', print_name = False)
-    #       log.info(bin + ' processed!')
-
-    #img_dir = "C:\\Users\\Admin\\Desktop\\155mm_FlatTests\\CalibImg\\"
-    #img_name = "FF451_20140816_212455_562_0055808.bin"
-    #saveImage(process_maxframe(img_dir+img_name, Flat_frame, Flat_frame_scalar), img_dir+img_name+"_proc.bmp", print_name = False)
-
-    #saveImage(process_avepixel(img_dir+img_name, Flat_frame, Flat_frame_scalar), img_dir+img_name+"_avg_proc.bmp", print_name = False)
-
-
-    #img_dir = "C:\\Users\\Admin\\Desktop\\CAMS\\CapturedFiles\\"
-    #img_name = "FF451_20140819_004945_593_0416256.bin"
-    #get_processed_frames(img_dir+img_name, 1, None, None, None, 143, 151)
-
-    #img_name = "00000255.bmp" #Skypatrol
-    #get_processed_frames(img_dir+img_name, 2, None, None, None, 114, 145)
-
-
-
-
-    #Flat_frame, Flat_frame_scalar = load_flat(flat_dir+"flat.bmp")
-
-    #img_name = "FF300_20140802_195545_131_0001024.bin"
-    #img_max = readFF(flat_dir+img_name).avepixel
-
-
-    #img_name = "FF451_20140812_221530_133_0312320.bin"
-
-    #det_only = get_detection_only(img_name, 68, 112)
-    #det_only = get_detection_only(img_name, 200, 220)
-
-    #saveImage(det_only, "1_detection_test2.bmp")
-
-
-
-
-    #saveImage(readFF(flat_dir+"FF451_20140812_221530_133_0312320.bin").maxpixel, 'FF_raw.bmp', print_name = False)
-
-    #makeGIF("C:\\Users\\Admin\\Desktop\\PER_GIF_making\\PUA_2014081213-Processed\\FF451_20140812_221530_133_0312320.bin", 68, 112, print_name = False, flat_frame = Flat_frame, Flat_frame_scalar = Flat_frame_scalar)
-
-    #ff_bin = "FF451_20140812_190215_928_0022528.bin"
-
-
-    #meteor_array = rotate_n_crop(ff_bin, flat_dir, Flat_frame, Flat_frame_scalar)
-
-    # lightcurve_list = get_lightcurve(meteor_array)
-
-    # newfile = open("lightcurve_list.txt", "w")
-    # newfile.write(",".join(map(str, lightcurve_list)))
-    # newfile.close()
-
-    # plt.scatter(range(len(lightcurve_list)), lightcurve_list)
-    # plt.savefig(ff_bin+'_lightcurve.png', bbox_inches='tight')
-    # plt.show()
-
-
-
-    #saveImage(Flat_frame, flat_dir+os.sep+"flat.bmp", print_name = False) #Save flat image
-
-    # #Process all images
-    # for ff_file_name in flat_raw:
-    #   log.info("Processing "+ff_file_name)
-    #   ff_file_image = readFF(ff_file_name).maxpixel
-
-    #   sub_img = np.subtract(ff_file_image, Flat_frame) #Substract the Flat_frame from raw image
-
-    #   result_img = deinterlace_blend(add_scalar(sub_img, Flat_frame_scalar)) #Step up the levels of substracted images by the average of the Flat_frame and deinterlace
-
-    #   saveImage(ff_file_image, ff_file_name+"_unprocessed.bmp", print_name = False)
-    #   #saveImage(Flat_frame, ff_file_name+"_Flat_frame.bmp", print_name = False)
-    #   saveImage(result_img, ff_file_name+"_result.bmp", print_name = False)
-
-
-    # image_name = flat_raw[0]
-    # image_ave = readFF(image_name).avepixel #Show avepixel image
-
-    #fig1 = plt.subplot(1, 1, 1)
-    #fig1.imshow(result_img, cmap=plt.cm.gray, interpolation='nearest', vmin = 0, vmax = 255)
-    #plt.show()
-
-
-
-    # # Mark detections
-    # img_name = "FF451_20140819_011805_796_0458752.bin"
-    # coordinates = get_FTPdetect_coordinates("FTPdetectinfo_0451_2014_08_18.txt", img_name, 1)[0]
-
-    # markedImage = markDetections(readFF(img_name).maxpixel, coordinates)
-
-    # saveImage(markedImage, img_name+"_MARKED.bmp", print_name = False)
-
-
-    # ## Test croping segments
-    # img_name = "FF451_20140819_013054_156_0477952.bin"
-
-    # seg_list = get_FTPdetect_coordinates(open("FTPdetectinfo_0451_2014_08_18.txt").readlines(), img_name, 3)
-
-    # cropDetectionSegments(readFF(img_name), seg_list)
