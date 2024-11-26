@@ -48,8 +48,8 @@ def highlightMeteorPath(input_img, rho, phi, path_width=20):
 
         # Convert from row vector to column vector
         # Take only every 5th element
-        x = x.astype(np.int)[::5]
-        y = y.astype(np.int)[::5]
+        x = x.astype(int)[::5]
+        y = y.astype(int)[::5]
 
         # Check pixels for upper limit (y_size and x_size are intentianally reversed) and remove them
         x, y = checkUpperLimits(x, y, x_lim = y_size, y_lim = x_size)
