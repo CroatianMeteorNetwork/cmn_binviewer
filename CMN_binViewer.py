@@ -72,7 +72,7 @@ from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 from makeMP4 import makeMP4
 
-version = "3.37.0"
+version = "3.37.1"
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
