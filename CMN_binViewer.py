@@ -1859,6 +1859,7 @@ class BinViewer(Frame):
             if pth == '':
                 flat_path = os.path.join(self.dir_path, flat_fname)
             try:
+                print(flat_path)
                 flat_frame, flat_frame_scalar = load_flat(flat_path)
             except:
                 tkMessageBox.showerror("Flat frame file error", "Cannot find flat frame file: " + self.flat_name.get())
