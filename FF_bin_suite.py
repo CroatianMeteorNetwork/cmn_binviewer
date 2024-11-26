@@ -1011,7 +1011,7 @@ def load_flat(flat_bmp = 'flat.bmp'):
     flat_img = flat_img.convert('L')
     flat_img.load()
 
-    flat_array = np.asarray(flat_img, dtype=np.int)
+    flat_array = np.asarray(flat_img, dtype=np.uint)
 
     Flat_frame_scalar = int(np.median(flat_array))
 
@@ -1028,7 +1028,7 @@ def load_dark(dark_bmp = 'dark.bmp'):
     dark_img = dark_img.convert('L')
     dark_img.load()
 
-    dark_array = np.asarray(dark_img, dtype=np.int)
+    dark_array = np.asarray(dark_img, dtype=np.uint)
 
     return dark_array
 
