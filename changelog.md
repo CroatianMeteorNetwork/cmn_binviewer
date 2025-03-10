@@ -1,5 +1,8 @@
 CMN Binviewer Change Log
 ========================
+3.37.2
+Mar 25: Bugfix to trap case when RMS didn't create the UFO-format CSV file properly
+
 3.37.1
 Nov 24: Bugfix to support newer versions of numpy without np.int
 
