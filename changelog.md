@@ -1,5 +1,8 @@
 CMN Binviewer Change Log
 ========================
+3.37.3
+Feb 26: Bugfix in confirmation external video display on Linux
+
 3.37.2
 Mar 25: Bugfix to trap case when RMS didn't create the UFO-format CSV file properly
 
