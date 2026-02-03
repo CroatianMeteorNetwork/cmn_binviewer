@@ -72,7 +72,7 @@ from module_highlightMeteorPath import highlightMeteorPath
 from module_CAMS2CMN import convert_rmsftp_to_cams
 from makeMP4 import makeMP4
 
-version = "3.37.1"
+version = "3.37.3"
 
 # set to true to disable the video radiobutton
 disable_UI_video = False
@@ -3377,24 +3377,30 @@ class BinViewer(Frame):
 
             # write filtered UFO-compatible R91 csv file 
             if sys.version_info[0] > 2:
-                self.timestamp_label.configure(text = "Updating UFO file...")
-                try:
-                    ufoFile = glob.glob(os.path.join(self.dir_path, '*.csv'))[0]
-                    
-                    with open(ufoFile,'r') as uf:
-                        ufoData = uf.readlines()
-                    newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
-                    try:
-                        _, ufof = os.path.split(ufoFile)
-                        fnam = os.path.join(self.ConfirmationInstance.confirmationDirectory, ufof)
-                        with open(fnam, 'w') as newUfoFile:
-                            for line in newufoData:
-                                newUfoFile.write(line)
+               
+                ufoName = os.path.split(self.dir_path)[1] + '.csv'
+                ufoFile = os.path.join(self.dir_path, ufoName)
 
-                    except OSError as error:
-                        log.info('unable to write CSV file, {}'.format(error))
-                except FileNotFoundError:
-                    log.info('CSV file not present')
+                if os.path.isfile(ufoFile):
+                    self.timestamp_label.configure(text = "Updating UFO file...")
+                    try:
+                        with open(ufoFile,'r') as uf:
+                            ufoData = uf.readlines()
+                        newufoData = self.updateUFOData(FTPdetectinfoExport, ufoData)
+                        try:
+                            _, ufof = os.path.split(ufoFile)
+                            fnam = os.path.join(self.ConfirmationInstance.confirmationDirectory, ufof)
+                            with open(fnam, 'w') as newUfoFile:
+                                for line in newufoData:
+                                    newUfoFile.write(line)
+
+                        except OSError as error:
+                            log.info('unable to write CSV file, {}'.format(error))
+                    except Exception:
+                        log.info('UFO CSV file corrupt and cant be updated')
+                else:
+                    log.info('UFO CSV file not present')
+
             else:
                 print('ufo filtering doesnt work on Python 2.7')
 
@@ -4013,7 +4019,12 @@ def externalVideoInitialize(img_cols):
     external_video_root.geometry('+' + img_cols + '+130')
 
     external_video_root.protocol('WM_DELETE_WINDOW', lambda *args: None)  # Override close button to do nothing
-    external_video_root.attributes("-toolwindow", 1)  # Remove minimize and maximize buttons
+    # Try window mondifications (works only on Windows!)
+    try:
+        # Remove minimize and maximize buttons
+        external_video_root.attributes("-toolwindow", 1)  # Remove minimize and maximize buttons
+    except Exception:
+        pass
 
 
 def quitBinviewer():
@@ -4138,7 +4149,7 @@ if __name__ == '__main__':
     # Set window icon
     try:
         root.iconbitmap(os.path.join('.', 'icon.ico'))
-    except:
+    except Exception:
         pass
 
     # Init the BinViewer UI
