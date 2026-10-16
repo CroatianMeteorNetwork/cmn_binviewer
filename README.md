@@ -139,10 +139,17 @@ If you are getting weird "Exception code is 0xc0000005 (access violation)" error
 **Troubleshooting (Ubuntu/Debian)**
 
 1. ImportError: cannot import name ImageTk:
-
+Python imaging support is missing from the base OS
 Run:
 ```
 sudo apt-get install python-imaging-tk
+```
+
+2. ImportError: Cannot import name 'ImageTk' from 'PIL'
+This means the version of Pillow is too old, or does not have ImageTk support. The fix is to run 
+```
+source ~/vRMS/bin/activate
+pip install --upgrade pillow
 ```
 
 **Acknowledgements**
