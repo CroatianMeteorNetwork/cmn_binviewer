@@ -125,12 +125,6 @@ To build under windows, create a suitable virtual environment and clone the repo
 then activate the virtualenv and run "COMPILE_from_setup.bat" or "python setup.py build"
 
 
-Copyright (c) 2014-2015, Denis Vida
-* Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
-* images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden
-* further contributions by Mark McIntyre, 2021
-
-
 **Troubleshooting (Windows)**
 
 If you are getting weird "Exception code is 0xc0000005 (access violation)" errors, it was reported that the ROBOFORM password manager conflicts with binViewer and causes this error. The solution was to disable the ROBOFORM program.
@@ -138,19 +132,24 @@ If you are getting weird "Exception code is 0xc0000005 (access violation)" error
 
 **Troubleshooting (Ubuntu/Debian)**
 
-1. ImportError: cannot import name ImageTk:
-Python imaging support is missing from the base OS
-Run:
+1. ImportError: cannot import name ImageTk:  
+Python imaging support is missing from the base OS.  
+The fix is to run:  
 ```
 sudo apt-get install python-imaging-tk
 ```
 
-2. ImportError: Cannot import name 'ImageTk' from 'PIL'
-This means the version of Pillow is too old, or does not have ImageTk support. The fix is to run 
+2. ImportError: Cannot import name 'ImageTk' from 'PIL'  
+This means the version of Pillow is too old, or does not have ImageTk support.  
+The fix is to activate the virtual or conda environment and then run:  
 ```
-source ~/vRMS/bin/activate
 pip install --upgrade pillow
 ```
+
+Copyright (c) 2014-2015, Denis Vida
+* Reading FF*.bin files: based on Matlab scripts by Peter S. Gural
+* images2gif: Copyright © 2012, Almar Klein, Ant1, Marius van Voorden
+* further contributions by Mark McIntyre, 2021
 
 **Acknowledgements**
 
